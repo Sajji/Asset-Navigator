@@ -1,0 +1,2856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Asset Navigator</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Open+Sans:wght@400;600;700&family=Lato:wght@400;700&family=Oswald:wght@400;600;700&family=Bebas+Neue&family=Roboto+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ========== Design Tokens (default DoD Dark — overridden by JS theme) ===== */
+  :root {
+    --bg:#04081A; --surface:#091028; --surface-2:#0D1535; --surface-3:#121B42;
+    --border:#1A2648; --border-hi:#243462;
+    --text-1:#E0E8F8; --text-2:#7080AC; --text-muted:#384060;
+    --accent:#1B6FBA; --accent-hi:#2585D5; --accent-dim:rgba(27,111,186,0.13);
+    --accent-glow:rgba(27,111,186,0.26);
+    --gold:#C8A84B; --gold-dim:rgba(200,168,75,0.10);
+    --danger:#CC4040; --danger-dim:rgba(204,64,64,0.08);
+    --row-hover:rgba(27,111,186,0.07); --row-active:rgba(27,111,186,0.14);
+    --header-banner:#091028; --header-banner-text:#E0E8F8;
+    --header-stripe:linear-gradient(90deg,#1B6FBA,#2585D5,#1B6FBA);
+    --font-body:'Barlow',sans-serif;
+    --font-display:'Barlow Condensed',sans-serif;
+    --font-scale:1;
+  }
+
+  /* ========== Reset & Base ========== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%; background: var(--bg); color: var(--text-1);
+    font-family: var(--font-body); font-size: 14px;
+    transition: background .25s, color .25s;
+  }
+  body { overflow: hidden; }
+  a { color: var(--accent-hi); text-decoration: none; }
+  a:hover { color: var(--accent); }
+  button { font-family: inherit; }
+  input, select, textarea { font-family: inherit; color: inherit; }
+
+  /* Subtle dotted bg pattern for depth (very low opacity, behind everything) */
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image: radial-gradient(circle, var(--border) 1px, transparent 1px);
+    background-size: 28px 28px; opacity: .25; pointer-events: none; z-index: 0;
+    transition: opacity .25s;
+  }
+  [data-mode="light"] body::before { opacity: .12; }
+
+  /* ========== Header ========== */
+  .app-header { position: relative; z-index: 30; flex-shrink: 0; }
+  .header-eyebrow {
+    background: var(--surface-2); border-bottom: 1px solid var(--border);
+    padding: 4px 20px; display: flex; align-items: center; justify-content: space-between;
+    font-family: var(--font-display); font-size: 10px; font-weight: 600;
+    letter-spacing: .18em; text-transform: uppercase; color: var(--text-muted);
+    transition: background .25s, border-color .25s, color .25s;
+  }
+  .eyebrow-tag { display: flex; align-items: center; gap: 6px; color: var(--gold); transition: color .25s; }
+  .header-main {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    border-top: 3px solid var(--accent);
+    transition: background .25s, border-color .25s;
+  }
+  [data-mode="light"] .header-main { background: var(--header-banner); border-top: none; border-bottom: none; }
+  [data-mode="light"] .header-main::after { content: ''; display: block; height: 4px; background: var(--header-stripe); }
+
+  .header-inner {
+    padding: 10px 20px; display: flex; align-items: center;
+    justify-content: space-between; gap: 16px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .brand-icon-wrap { width: 40px; height: 40px; flex-shrink: 0; display: grid; place-items: center; }
+  .brand-text { min-width: 0; }
+  .brand-label {
+    font-family: var(--font-display); font-size: 10px; font-weight: 600;
+    letter-spacing: .18em; text-transform: uppercase; color: var(--text-muted);
+    margin-bottom: 3px; transition: color .25s;
+  }
+  .brand-name {
+    font-family: var(--font-display); font-size: 17px; font-weight: 700;
+    color: var(--text-1); letter-spacing: .03em; text-transform: uppercase;
+    transition: color .25s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  [data-mode="light"] .brand-label { color: var(--header-banner-text); opacity: .65; }
+  [data-mode="light"] .brand-name { color: var(--header-banner-text); }
+
+  .header-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .btn-header {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: transparent; border: 1px solid var(--border-hi);
+    color: var(--text-2); padding: 5px 12px; border-radius: 2px;
+    font-size: 11px; font-weight: 600; cursor: pointer;
+    font-family: var(--font-display); text-transform: uppercase; letter-spacing: .08em;
+    text-decoration: none; transition: border-color .15s, color .15s, background .15s;
+  }
+  .btn-header:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  [data-mode="light"] .btn-header { border-color: rgba(255,255,255,.25); color: rgba(255,255,255,.75); }
+  [data-mode="light"] .btn-header:hover { border-color: rgba(255,255,255,.65); color: #fff; background: rgba(255,255,255,.12); }
+
+  .user-chip {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface-2); border: 1px solid var(--border-hi);
+    border-radius: 2px; padding: 5px 12px 5px 7px; font-size: 12px;
+    color: var(--text-2); font-family: var(--font-display); letter-spacing: .05em;
+    max-width: 220px;
+    transition: background .25s, border-color .25s, color .25s;
+  }
+  .user-chip span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .user-avatar {
+    width: 24px; height: 24px; background: var(--accent-dim);
+    border: 1px solid var(--accent); display: grid; place-items: center;
+    font-size: 9px; font-weight: 700; color: var(--accent);
+    font-family: var(--font-display); letter-spacing: 0;
+    flex-shrink: 0; transition: all .25s;
+  }
+  [data-mode="light"] .user-chip { background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.22); color: rgba(255,255,255,.82); }
+  [data-mode="light"] .user-avatar { background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.55); color: #fff; }
+
+  /* ========== Controls Bar (global search) ========== */
+  .controls-bar {
+    background: var(--surface-2); border-bottom: 1px solid var(--border);
+    padding: 8px 20px; display: flex; align-items: center; gap: 12px;
+    transition: background .25s, border-color .25s; flex-shrink: 0;
+  }
+  .search-wrap { position: relative; flex: 1; max-width: 480px; min-width: 180px; }
+  .search-icon {
+    position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+    color: var(--text-muted); pointer-events: none; transition: color .25s;
+  }
+  .search-input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 2px; padding: 7px 10px 7px 32px; font-size: 12px;
+    font-family: var(--font-body); color: var(--text-1); outline: none;
+    transition: border-color .15s, background .25s, color .25s;
+  }
+  .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+  .search-input::placeholder { color: var(--text-muted); }
+
+  .controls-meta {
+    margin-left: auto; font-family: var(--font-display); font-size: 10px;
+    font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--text-muted); white-space: nowrap;
+  }
+  .controls-meta strong { color: var(--accent); font-weight: 700; }
+
+  /* ========== Search popover (results dropdown) ========== */
+  .search-popover {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: var(--surface); border: 1px solid var(--border-hi);
+    border-top: 3px solid var(--accent); border-radius: 2px;
+    max-height: 60vh; overflow-y: auto;
+    box-shadow: 0 12px 32px rgba(0,0,0,.4); z-index: 100;
+  }
+  .search-popover-empty {
+    padding: 12px 14px; font-family: var(--font-display); font-size: 11px;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted);
+  }
+  .search-result {
+    display: flex; align-items: flex-start; gap: 8px; padding: 8px 12px;
+    cursor: pointer; border-bottom: 1px solid var(--border);
+    transition: background .1s;
+  }
+  .search-result:last-child { border-bottom: none; }
+  .search-result:hover { background: var(--row-hover); }
+  .search-result-icon { color: var(--gold); font-size: 12px; flex-shrink: 0; line-height: 1.4; }
+  .search-result-body { flex: 1; min-width: 0; }
+  .search-result-name {
+    font-size: 12px; font-weight: 600; color: var(--text-1);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .search-result-meta {
+    font-family: var(--font-display); font-size: 9px; font-weight: 600;
+    letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* ========== Workspace Layout ========== */
+  .workspace {
+    display: flex; height: calc(100vh - var(--header-h, 56px) - var(--eyebrow-h, 25px) - var(--controls-h, 41px));
+    width: 100%; overflow: hidden; position: relative; z-index: 1;
+  }
+
+  /* ========== Left Pane (Tree) ========== */
+  .left-pane {
+    width: 360px; min-width: 240px; max-width: 70vw;
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    background: var(--surface); overflow: hidden;
+    transition: background .25s, border-color .25s;
+  }
+  .left-pane-header {
+    padding: 8px 12px; border-bottom: 1px solid var(--border);
+    background: var(--surface-2);
+    display: flex; align-items: center; gap: 8px;
+    flex-shrink: 0; transition: background .25s, border-color .25s;
+  }
+  .left-pane-title {
+    font-family: var(--font-display); font-size: 10px; font-weight: 700;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .left-pane-title strong { color: var(--accent); }
+  .icon-btn {
+    background: transparent; border: 1px solid var(--border-hi);
+    color: var(--text-muted); width: 26px; height: 26px; border-radius: 2px;
+    cursor: pointer; font-size: 13px; display: grid; place-items: center;
+    transition: border-color .15s, color .15s, background .15s; flex-shrink: 0;
+  }
+  .icon-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+  .left-pane-toolbar {
+    padding: 8px 12px; border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .filter-wrap { position: relative; }
+  .filter-input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 2px; padding: 6px 10px 6px 28px; font-size: 12px;
+    font-family: var(--font-body); color: var(--text-1); outline: none;
+    transition: border-color .15s, background .25s, color .25s;
+  }
+  .filter-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+  .filter-input::placeholder { color: var(--text-muted); }
+  .filter-icon {
+    position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
+    color: var(--text-muted); pointer-events: none;
+  }
+
+  .tree-scroll { flex: 1; overflow-y: auto; padding: 6px 4px 24px; }
+
+  /* ========== Tree Nodes ========== */
+  .tree-node { user-select: none; }
+  .tree-row {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 8px; border-radius: 2px; cursor: pointer;
+    font-size: 13px; line-height: 1.25; color: var(--text-1);
+    white-space: nowrap; overflow: hidden;
+    transition: background .12s, color .12s;
+  }
+  .tree-row:hover { background: var(--row-hover); }
+  .tree-row.selected {
+    background: var(--row-active); color: var(--text-1);
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+  .tree-row.selected .node-icon { color: var(--accent); }
+
+  .tree-twisty {
+    width: 12px; height: 12px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--text-muted); font-size: 9px;
+    transition: transform .15s, color .12s;
+  }
+  .tree-twisty.open { transform: rotate(90deg); color: var(--accent); }
+  .tree-twisty.empty { visibility: hidden; }
+
+  .node-icon {
+    width: 16px; height: 16px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--text-muted);
+    transition: color .12s;
+  }
+  .node-icon svg { width: 14px; height: 14px; display: block; }
+  .tree-row:hover .node-icon { color: var(--text-2); }
+  .node-icon.community { color: var(--accent); }
+  .node-icon.domain    { color: var(--gold); }
+  .node-icon.type      { color: var(--text-2); }
+  .node-icon.asset     { color: var(--text-muted); }
+
+  .node-label {
+    flex: 1; overflow: hidden; text-overflow: ellipsis;
+    font-family: var(--font-body); font-weight: 500;
+  }
+
+  /* Asset count chip — landing-page badge style */
+  .node-count {
+    flex-shrink: 0;
+    background: var(--accent-dim); border: 1px solid var(--border-hi);
+    color: var(--accent); font-family: var(--font-display);
+    font-size: 9px; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; padding: 1px 6px; border-radius: 2px;
+    line-height: 1.4; min-width: 28px; text-align: center;
+  }
+  .node-count.dim { color: var(--text-muted); background: transparent; border-color: var(--border); }
+  .node-count.loading { opacity: .6; }
+  .node-count.hidden { display: none; }
+
+  .tree-children {
+    padding-left: 14px;
+    border-left: 1px dashed var(--border);
+    margin-left: 11px;
+  }
+
+  .tree-row.load-more {
+    color: var(--accent); font-style: italic;
+    font-family: var(--font-display); text-transform: uppercase;
+    letter-spacing: .06em; font-size: 11px;
+  }
+  .tree-row.load-more:hover { background: var(--accent-dim); }
+  .tree-row.load-more.loading { opacity: .55; pointer-events: none; }
+
+  .tree-loading, .tree-empty {
+    padding: 8px 10px; font-family: var(--font-display);
+    font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--text-muted);
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .group-header {
+    padding: 8px 8px 4px;
+    font-family: var(--font-display); font-size: 9px; font-weight: 700;
+    letter-spacing: .14em; text-transform: uppercase;
+    color: var(--text-muted);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .group-header::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  /* ========== Splitter ========== */
+  .splitter {
+    width: 5px; cursor: col-resize; background: transparent;
+    flex-shrink: 0; position: relative; transition: background .15s;
+  }
+  .splitter:hover, .splitter.dragging { background: var(--accent-dim); }
+  .splitter::after {
+    content: ''; position: absolute; top: 0; bottom: 0; left: 2px;
+    width: 1px; background: var(--border);
+  }
+
+  /* ========== Right Pane (Detail) ========== */
+  .right-pane {
+    flex: 1; overflow-y: auto; background: var(--bg);
+    transition: background .25s;
+  }
+  .detail-container {
+    max-width: 1400px; margin: 0 auto; padding: 24px 28px 48px;
+  }
+
+  /* Empty state */
+  .empty-detail {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 70vh; text-align: center; padding: 40px 24px; color: var(--text-muted);
+  }
+  .empty-detail-icon {
+    width: 64px; height: 64px; margin-bottom: 20px;
+    border: 1px solid var(--border-hi); border-radius: 2px;
+    display: grid; place-items: center; color: var(--accent);
+    background: var(--accent-dim);
+  }
+  .empty-detail h2 {
+    font-family: var(--font-display); font-size: 18px; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--text-1);
+    margin-bottom: 6px;
+  }
+  .empty-detail p {
+    font-size: 13px; color: var(--text-2); max-width: 420px; line-height: 1.5;
+  }
+
+  /* Asset header card */
+  .asset-header {
+    background: var(--surface); border: 1px solid var(--border);
+    border-top: 3px solid var(--accent); border-radius: 2px;
+    padding: 18px 22px; margin-bottom: 16px;
+    transition: background .25s, border-color .25s;
+  }
+  .asset-breadcrumb {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    font-family: var(--font-display); font-size: 10px; font-weight: 600;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .asset-breadcrumb .crumb { color: var(--text-2); }
+  .asset-breadcrumb .sep { color: var(--text-muted); opacity: .6; }
+  .asset-title-row {
+    display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap;
+  }
+  .asset-title {
+    margin: 0; flex: 1; min-width: 0;
+    font-family: var(--font-display); font-size: 26px; font-weight: 800;
+    letter-spacing: .01em; color: var(--text-1); line-height: 1.15;
+    word-break: break-word;
+  }
+  .asset-meta-row {
+    display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+    margin-top: 12px;
+  }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; border-radius: 2px;
+    font-family: var(--font-display); font-size: 10px; font-weight: 700;
+    letter-spacing: .06em; text-transform: uppercase;
+    background: var(--accent-dim); border: 1px solid var(--border-hi);
+    color: var(--accent);
+  }
+  .chip.type   { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+  .chip.status { background: var(--surface-2); color: var(--text-2); border-color: var(--border-hi); }
+  .chip.domain { background: var(--gold-dim); color: var(--gold); border-color: var(--gold); }
+
+  .open-link {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 6px 14px; border-radius: 2px;
+    background: var(--accent); border: 1px solid var(--accent-hi);
+    color: #fff !important; text-decoration: none;
+    font-family: var(--font-display); font-size: 11px; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase;
+    transition: background .15s;
+    flex-shrink: 0;
+  }
+  .open-link:hover { background: var(--accent-hi); color: #fff !important; }
+
+  /* Section grid (responsive) */
+  .detail-sections {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    gap: 14px;
+  }
+  .section {
+    background: var(--surface); border: 1px solid var(--border);
+    border-top: 3px solid var(--accent); border-radius: 2px;
+    padding: 16px 18px;
+    transition: background .25s, border-color .25s;
+  }
+  .section.full-width { grid-column: 1 / -1; }
+  .section.span-attrs { border-top-color: var(--accent); }
+  .section.span-multi { border-top-color: var(--accent-hi); }
+  .section.span-tags  { border-top-color: var(--gold); }
+  .section.span-resp  { border-top-color: var(--accent-hi); }
+  .section.span-out   { border-top-color: var(--accent); }
+  .section.span-in    { border-top-color: var(--accent-hi); }
+
+  .section h3 {
+    margin: 0 0 12px;
+    font-family: var(--font-display); font-size: 11px; font-weight: 700;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section h3::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .section h3 .count {
+    font-family: var(--font-display); font-size: 10px; font-weight: 700;
+    color: var(--accent); background: var(--accent-dim);
+    border: 1px solid var(--border-hi); padding: 1px 6px; border-radius: 2px;
+    letter-spacing: .06em;
+  }
+
+  /* Attributes grid */
+  .attr-grid {
+    display: grid;
+    grid-template-columns: minmax(140px, 180px) 1fr;
+    gap: 8px 16px; font-size: 13px;
+  }
+  .attr-grid dt {
+    font-family: var(--font-display); font-weight: 600; font-size: 11px;
+    letter-spacing: .08em; text-transform: uppercase;
+    color: var(--text-muted); align-self: start;
+    overflow-wrap: break-word; padding-top: 1px;
+  }
+  .attr-grid dd {
+    margin: 0; color: var(--text-1); font-size: 13px; line-height: 1.5;
+    overflow-wrap: break-word; word-break: break-word;
+  }
+  .attr-grid dd code {
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    font-size: 12px; background: var(--bg); border: 1px solid var(--border);
+    padding: 1px 5px; border-radius: 2px; color: var(--text-2);
+  }
+  .attr-grid dd .multi-val {
+    display: inline-block; background: var(--surface-2);
+    border: 1px solid var(--border); padding: 2px 6px; border-radius: 2px;
+    margin-right: 4px; margin-bottom: 4px; font-size: 12px;
+    color: var(--text-2);
+  }
+  .attr-grid dd.html-content :is(p, ul, ol) { margin: 0.25rem 0; }
+  .attr-grid dd.html-content :is(ul, ol) { padding-left: 1.2em; }
+  .span-attrs:not(.expanded) .attr-extra { display: none; }
+  .attr-toggle {
+    margin-top: 10px; padding: 6px 10px;
+    background: var(--bg); border: 1px solid var(--border);
+    color: var(--text-2); cursor: pointer; border-radius: 2px;
+    font-family: var(--font-display); font-size: 10px; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  .attr-toggle:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+  @media (max-width: 720px) {
+    .attr-grid { grid-template-columns: 1fr; gap: 2px 0; }
+    .attr-grid dt { margin-top: 8px; }
+    .detail-container { padding: 16px 14px 32px; }
+  }
+
+  /* Relations */
+  .relation-group { margin-bottom: 12px; }
+  .relation-group:last-child { margin-bottom: 0; }
+  .relation-group-title {
+    font-family: var(--font-display); font-size: 10px; font-weight: 700;
+    color: var(--text-2); letter-spacing: .08em; text-transform: uppercase;
+    margin-bottom: 6px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  }
+  .relation-group-title .arrow { color: var(--accent); }
+  .relation-group-title .other-type { color: var(--text-muted); }
+  .relation-list { display: flex; flex-wrap: wrap; gap: 5px; }
+  .relation-item {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 10px; border-radius: 2px;
+    background: var(--bg); border: 1px solid var(--border);
+    font-size: 12px; cursor: pointer; color: var(--text-1);
+    transition: background .12s, border-color .12s, color .12s;
+  }
+  .relation-item:hover { background: var(--row-hover); border-color: var(--accent); color: var(--accent); }
+  .relation-item .rt {
+    font-family: var(--font-display); font-size: 9px; font-weight: 600;
+    color: var(--text-muted); text-transform: uppercase; letter-spacing: .08em;
+  }
+
+  /* Relation diagram */
+  .section.span-diagram { border-top-color: var(--gold); }
+  .relation-diagram-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; flex-wrap: wrap; margin-bottom: 12px;
+  }
+  .diagram-key {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    font-family: var(--font-display); font-size: 10px; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted);
+  }
+  .diagram-key-item {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 7px; border: 1px solid var(--border);
+    border-radius: 2px; background: var(--bg);
+  }
+  .diagram-key-item::before {
+    content: ''; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent); display: inline-block;
+  }
+  .diagram-key-item.outgoing::before { background: var(--gold); }
+  .diagram-toggles { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .diagram-toggle {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 8px; border-radius: 2px;
+    background: var(--bg); border: 1px solid var(--border);
+    color: var(--text-2); cursor: pointer;
+    font-family: var(--font-display); font-size: 10px; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  .diagram-toggle:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .diagram-toggle input { width: 13px; height: 13px; accent-color: var(--accent); }
+  .relation-diagram {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(200px, 1fr) minmax(220px, 280px) minmax(200px, 1fr);
+    gap: 0 90px; align-items: center;
+    max-height: 620px; overflow: auto; padding: 6px 4px;
+  }
+  .diagram-column {
+    display: flex; flex-direction: column; gap: 14px;
+    min-width: 0; align-self: stretch; justify-content: center;
+    position: relative; z-index: 2;
+  }
+  .diagram-column-title {
+    font-family: var(--font-display); font-size: 10px; font-weight: 700;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .diagram-column-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .diagram-center {
+    align-self: center; min-width: 0;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    position: relative; z-index: 2;
+  }
+  .diagram-center-label {
+    font-family: var(--font-display); font-size: 10px; font-weight: 700;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--accent);
+  }
+  .diagram-node {
+    min-width: 0; width: 100%; text-align: left;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 2px; color: var(--text-1); padding: 8px 10px;
+    display: flex; flex-direction: column; gap: 2px;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  button.diagram-node { cursor: pointer; font-family: inherit; }
+  button.diagram-node:hover { border-color: var(--accent); background: var(--row-hover); color: var(--accent); }
+  .diagram-node.current {
+    border-color: var(--accent); background: var(--accent-dim);
+    box-shadow: inset 2px 0 0 var(--accent);
+    padding: 12px 14px;
+  }
+  .diagram-node-name {
+    font-size: 12px; font-weight: 600; line-height: 1.25;
+    overflow-wrap: break-word; word-break: break-word;
+  }
+  .diagram-node-type {
+    font-family: var(--font-display); font-size: 9px; font-weight: 700;
+    color: var(--text-muted); letter-spacing: .08em; text-transform: uppercase;
+  }
+  .diagram-node.current .diagram-node-name { font-size: 15px; color: var(--text-1); }
+  .diagram-svg-overlay {
+    position: absolute; left: 0; top: 0;
+    pointer-events: none; z-index: 1; overflow: visible;
+  }
+  .diagram-arrow {
+    fill: none; stroke-width: 1.5;
+    stroke-linecap: round; stroke-linejoin: round;
+  }
+  .diagram-arrow.incoming { stroke: var(--accent); }
+  .diagram-arrow.outgoing { stroke: var(--gold); }
+  .diagram-edge-labels {
+    position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 3;
+  }
+  .diagram-edge-label {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    max-width: 160px; padding: 2px 6px; border-radius: 2px;
+    background: var(--surface); border: 1px solid var(--border-hi);
+    color: var(--text-2); font-family: var(--font-display);
+    font-size: 9px; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: auto;
+  }
+  .relation-diagram-section:not(.show-role) .diagram-edge-label.role,
+  .relation-diagram-section:not(.show-corole) .diagram-edge-label.corole { display: none; }
+  .diagram-empty {
+    padding: 10px; border: 1px dashed var(--border); border-radius: 2px;
+    color: var(--text-muted); font-family: var(--font-display);
+    font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; text-align: center;
+  }
+
+  /* Relation diagram groups (collapsible per role/type) */
+  .diagram-group {
+    display: flex; flex-direction: column; gap: 8px;
+    border: 1px solid var(--border); border-radius: 2px;
+    background: var(--surface);
+    padding: 6px 8px 8px;
+  }
+  .diagram-group-header {
+    display: flex; align-items: center; gap: 6px;
+    width: 100%; background: transparent; border: 0;
+    padding: 2px 0; cursor: pointer; color: var(--text-2);
+    font-family: var(--font-display); font-size: 10px; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase;
+    text-align: left;
+  }
+  .diagram-group-header:hover { color: var(--accent); }
+  .diagram-group-header .chev {
+    display: inline-block; width: 9px; flex-shrink: 0;
+    transition: transform .15s; color: var(--text-muted);
+  }
+  .diagram-group.collapsed .diagram-group-header .chev { transform: rotate(-90deg); }
+  .diagram-group-header .role { color: var(--text-1); }
+  .diagram-group-header .arrow { color: var(--accent); }
+  .diagram-column.outgoing .diagram-group-header .arrow { color: var(--gold); }
+  .diagram-group-header .other-type { color: var(--text-muted); }
+  .diagram-group-header .count {
+    margin-left: auto;
+    background: var(--accent-dim); color: var(--accent);
+    border: 1px solid var(--accent); border-radius: 2px;
+    padding: 0 5px; font-size: 9px; min-width: 18px; text-align: center;
+  }
+  .diagram-column.outgoing .diagram-group-header .count {
+    background: var(--gold-dim); color: var(--gold); border-color: var(--gold);
+  }
+  .diagram-group-nodes { display: flex; flex-direction: column; gap: 8px; }
+  .diagram-group.collapsed .diagram-group-nodes { display: none; }
+  .diagram-group-nodes .diagram-edge-node[hidden] { display: none; }
+  .diagram-group-more {
+    align-self: stretch; padding: 4px 8px;
+    background: transparent; border: 1px dashed var(--border-hi);
+    border-radius: 2px; color: var(--text-2); cursor: pointer;
+    font-family: var(--font-display); font-size: 10px; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  .diagram-group-more:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+  @media (max-width: 720px) {
+    .relation-diagram { grid-template-columns: 1fr; gap: 14px; max-height: none; }
+    .diagram-column { justify-content: flex-start; }
+    .diagram-center { order: 2; }
+    .diagram-column.incoming { order: 1; }
+    .diagram-column.outgoing { order: 3; }
+  }
+
+  /* Responsibilities */
+  .resp-list {
+    display: grid; gap: 6px;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+  .resp-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: 2px;
+    background: var(--bg); border: 1px solid var(--border);
+    font-size: 13px;
+    min-width: 0;
+  }
+  .resp-info { min-width: 0; }
+  .resp-info .resp-name,
+  .resp-info .resp-role { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @media (max-width: 720px) {
+    .resp-list { grid-template-columns: 1fr; }
+  }
+  .resp-avatar {
+    width: 30px; height: 30px; border-radius: 2px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-weight: 700; font-size: 11px; color: #fff;
+    background: var(--accent); border: 1px solid var(--accent-hi);
+    flex-shrink: 0; letter-spacing: 0;
+  }
+  .resp-name { font-weight: 600; color: var(--text-1); }
+  .resp-role {
+    color: var(--text-muted); font-size: 11px;
+    font-family: var(--font-display); letter-spacing: .06em;
+    text-transform: uppercase; margin-top: 1px;
+  }
+  .resp-info { flex: 1; min-width: 0; }
+  .resp-inherited-tag {
+    margin-left: auto;
+    font-family: var(--font-display); font-size: 9px; font-weight: 700;
+    color: var(--gold); letter-spacing: .08em; text-transform: uppercase;
+    background: var(--gold-dim); border: 1px solid var(--gold);
+    padding: 1px 6px; border-radius: 2px;
+  }
+
+  /* Tags */
+  .tag-list { display: flex; flex-wrap: wrap; gap: 5px; }
+  .tag {
+    padding: 3px 8px; border-radius: 2px;
+    font-family: var(--font-display); font-size: 10px; font-weight: 700;
+    letter-spacing: .06em; text-transform: uppercase;
+    background: var(--gold-dim); color: var(--gold);
+    border: 1px solid var(--gold);
+  }
+
+  /* Banners */
+  .banner-error {
+    background: var(--danger-dim); color: var(--danger);
+    border: 1px solid var(--danger); border-left: 3px solid var(--danger);
+    border-radius: 2px; padding: 12px 16px;
+    font-size: 12px; margin-bottom: 12px;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .banner-error-title {
+    font-family: var(--font-display); font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase; font-size: 11px;
+    margin-bottom: 4px;
+  }
+
+  /* Spinners & skeletons */
+  .spinner {
+    display: inline-block; width: 12px; height: 12px;
+    border: 1.5px solid var(--border-hi); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin .65s linear infinite;
+    flex-shrink: 0; vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+
+  .skel { display: flex; flex-direction: column; gap: 8px; padding: 8px 0; }
+  .skel-line { height: 14px; background: var(--surface-2); border-radius: 2px; animation: pulse 1.4s infinite; }
+  .skel-line.short { width: 40%; }
+  .skel-line.med   { width: 70%; }
+
+  .hidden { display: none !important; }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 0; border: 2px solid transparent; background-clip: content-box; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); background-clip: content-box; border: 2px solid transparent; }
+
+  /* ========== Theme Customize Panel (slides in from right) ========== */
+  .panel-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,.52);
+    z-index: 40; backdrop-filter: blur(2px);
+  }
+  .customize-panel {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: 340px; max-width: 90vw;
+    background: var(--surface); border-left: 1px solid var(--border);
+    border-top: 3px solid var(--accent); z-index: 50;
+    display: flex; flex-direction: column;
+    transform: translateX(100%); transition: transform .24s ease;
+    box-shadow: -8px 0 40px rgba(0,0,0,.4);
+  }
+  .customize-panel.open { transform: translateX(0); }
+  .panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    background: var(--surface-2); flex-shrink: 0;
+  }
+  .panel-title {
+    font-family: var(--font-display); font-size: 12px; font-weight: 700;
+    letter-spacing: .15em; text-transform: uppercase; color: var(--text-2);
+  }
+  .panel-close {
+    background: transparent; border: 1px solid var(--border-hi);
+    color: var(--text-muted); width: 26px; height: 26px; border-radius: 2px;
+    cursor: pointer; font-size: 12px; display: grid; place-items: center;
+    transition: border-color .15s, color .15s;
+  }
+  .panel-close:hover { border-color: var(--danger); color: var(--danger); }
+  .panel-body { flex: 1; overflow-y: auto; }
+  .panel-section { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  .panel-section:last-child { border-bottom: none; }
+  .panel-label {
+    font-family: var(--font-display); font-size: 10px; font-weight: 700;
+    letter-spacing: .15em; text-transform: uppercase; color: var(--text-muted);
+    margin-bottom: 10px; display: block;
+  }
+  .panel-hint {
+    font-size: 10px; color: var(--text-muted); margin: 4px 0 10px; line-height: 1.4;
+  }
+  .panel-input, .panel-select {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 2px; padding: 7px 10px; font-size: 12px;
+    font-family: var(--font-body); color: var(--text-1); outline: none;
+    transition: border-color .15s; margin-bottom: 6px;
+  }
+  .panel-input:focus, .panel-select:focus { border-color: var(--accent); }
+  .panel-input::placeholder { color: var(--text-muted); }
+
+  .branch-label {
+    font-family: var(--font-display); font-size: 9px; font-weight: 700;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted);
+    margin: 12px 0 6px; display: flex; align-items: center; gap: 6px;
+  }
+  .branch-label:first-child { margin-top: 0; }
+  .branch-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+  .theme-swatch {
+    border: 2px solid var(--border); border-radius: 2px;
+    height: 52px; cursor: pointer; position: relative; overflow: hidden;
+    transition: border-color .15s, transform .1s;
+    padding: 0;
+  }
+  .theme-swatch:hover { border-color: var(--accent); transform: scale(1.02); }
+  .theme-swatch.active { box-shadow: 0 0 0 2px var(--accent-dim); }
+  .swatch-mode-tag {
+    position: absolute; top: 4px; right: 4px;
+    font-family: var(--font-display); font-size: 7px; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase;
+    padding: 1px 4px; border-radius: 1px; opacity: .85;
+  }
+  .theme-swatch[data-mode="dark"]  .swatch-mode-tag { background: rgba(0,0,0,.55); color: #9AAAC8; }
+  .theme-swatch[data-mode="light"] .swatch-mode-tag { background: rgba(255,255,255,.68); color: #444; }
+  .swatch-label {
+    position: absolute; bottom: 0; left: 0; right: 0; padding: 3px 4px;
+    font-family: var(--font-display); font-size: 8px; font-weight: 600;
+    letter-spacing: .06em; text-transform: uppercase; text-align: center;
+  }
+  .theme-swatch[data-mode="dark"]  .swatch-label { background: rgba(0,0,0,.72); color: #E0E8F4; }
+  .theme-swatch[data-mode="light"] .swatch-label { background: rgba(255,255,255,.84); color: #111; }
+
+  .scale-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .scale-value {
+    color: var(--accent); font-family: var(--font-display);
+    font-size: 12px; font-weight: 700;
+  }
+  .scale-slider {
+    width: 100%; accent-color: var(--accent);
+  }
+  .scale-marks {
+    display: flex; justify-content: space-between;
+    font-family: var(--font-display); font-size: 9px;
+    letter-spacing: .08em; text-transform: uppercase;
+    color: var(--text-muted); margin-top: 4px;
+  }
+
+  .btn-panel-reset {
+    width: 100%; background: transparent;
+    border: 1px solid rgba(204,64,64,.30); color: rgba(204,64,64,.75);
+    padding: 8px 12px; border-radius: 2px;
+    font-family: var(--font-display); font-size: 11px; font-weight: 700;
+    cursor: pointer; text-transform: uppercase; letter-spacing: .08em;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  .btn-panel-reset:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-dim); }
+
+  /* Skip link */
+  .skip-link {
+    position: absolute; left: -9999px; top: 0; z-index: 9999;
+    background: var(--accent); color: #fff; padding: 8px 14px;
+    font-family: var(--font-display); font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; font-size: 12px; text-decoration: none;
+    border: 2px solid var(--accent-hi);
+  }
+  .skip-link:focus { left: 8px; top: 8px; outline: 3px solid var(--gold); outline-offset: 2px; }
+
+  /* Focus visible */
+  :focus { outline: none; }
+  a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible,
+  textarea:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--accent-hi); outline-offset: 2px;
+    box-shadow: 0 0 0 4px var(--accent-dim);
+  }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001s !important; transition-duration: .001s !important; }
+    .spinner { animation: none !important; }
+  }
+
+  /* ========== Responsive ========== */
+  @media (max-width: 880px) {
+    .workspace { flex-direction: column; height: auto; min-height: calc(100vh - 130px); overflow: visible; }
+    body { overflow: auto; }
+    .left-pane { width: 100% !important; max-width: 100%; max-height: 50vh; border-right: none; border-bottom: 1px solid var(--border); }
+    .splitter { display: none; }
+    .right-pane { overflow-y: visible; }
+    .detail-container { padding: 16px 14px 32px; }
+    .header-eyebrow { padding: 4px 14px; }
+    .header-inner { padding: 8px 14px; }
+    .controls-bar { padding: 8px 14px; }
+    .user-chip span { display: none; }
+  }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#mainPane">Skip to main content</a>
+
+<header class="app-header" role="banner">
+  <div class="header-eyebrow">
+    <div class="eyebrow-tag" id="eyebrowTag">
+      <span aria-hidden="true">◆</span>
+      <span>Data Catalog · Asset Navigator</span>
+    </div>
+    <span id="eyebrowDate"></span>
+  </div>
+  <div class="header-main">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-icon-wrap" id="brandShield" aria-hidden="true"></div>
+        <div class="brand-text">
+          <div class="brand-label" id="brandLabel">Data Catalog</div>
+          <div class="brand-name" id="brandName">Asset Navigator</div>
+        </div>
+      </div>
+      <nav class="header-actions" aria-label="Primary">
+        <button class="btn-header" id="customizeBtn" aria-label="Open theme settings" aria-haspopup="dialog" aria-expanded="false">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v3M12 20v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M1 12h3M20 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+          Theme
+        </button>
+        <div class="user-chip" id="userChip" aria-label="User">
+          <div class="user-avatar" id="userAvatar" aria-hidden="true">?</div>
+          <span id="userName">—</span>
+        </div>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<div class="controls-bar" role="region" aria-label="Search">
+  <div class="search-wrap" role="search">
+    <svg class="search-icon" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <label for="globalSearch" class="sr-only" style="position:absolute;left:-9999px">Search assets</label>
+    <input id="globalSearch" class="search-input" type="search" placeholder="Search assets by name…" autocomplete="off" />
+  </div>
+  <span class="controls-meta"><strong id="orgChip">—</strong></span>
+</div>
+
+<div id="workspace" class="workspace">
+  <aside class="left-pane" id="leftPane" aria-label="Asset tree">
+    <div class="left-pane-header">
+      <span class="left-pane-title"><strong id="treeCount">0</strong> Communities</span>
+      <button id="refreshTreeBtn" class="icon-btn" title="Reload communities" aria-label="Reload communities" style="margin-left:auto">↻</button>
+    </div>
+    <div class="left-pane-toolbar">
+      <div class="filter-wrap">
+        <svg class="filter-icon" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input id="treeFilter" class="filter-input" type="search" placeholder="Filter tree…" autocomplete="off" />
+      </div>
+    </div>
+    <div class="tree-scroll" id="treeScroll">
+      <div class="tree-loading"><span class="spinner"></span> Connecting to Collibra…</div>
+    </div>
+  </aside>
+
+  <div class="splitter" id="splitter" role="separator" aria-orientation="vertical" tabindex="0"></div>
+
+  <main class="right-pane" id="mainPane" tabindex="-1">
+    <div class="detail-container">
+      <div class="empty-detail" id="emptyDetail">
+        <div class="empty-detail-icon" aria-hidden="true">
+          <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 7l9-4 9 4M3 7v10l9 4 9-4V7M3 7l9 4 9-4M12 11v10"/></svg>
+        </div>
+        <h2>Select an Asset</h2>
+        <p>Browse communities and domains in the tree to the left, then choose an asset to see its full details.</p>
+      </div>
+      <div id="detailContent" class="hidden"></div>
+    </div>
+  </main>
+</div>
+
+<div class="panel-backdrop" id="panelBackdrop" hidden></div>
+<aside class="customize-panel" id="customizePanel" role="dialog" aria-modal="true" aria-labelledby="customizePanelTitle" hidden>
+  <div class="panel-header">
+    <span class="panel-title" id="customizePanelTitle">Customize Theme</span>
+    <button class="panel-close" id="panelClose" aria-label="Close theme panel">✕</button>
+  </div>
+  <div class="panel-body" id="panelBody">
+    <!-- Populated by JS: theme swatches, font selectors, font scale, reset -->
+  </div>
+</aside>
+
+<script>
+'use strict';
+
+// ============================================================================
+// Configuration & State
+// ============================================================================
+const BASE_URL = window.location.origin;
+const SEARCH_RESULT_LIMIT = 50;
+const PAGE_LIMIT = 500;
+const MAX_OFFSET = 200000;
+const DETAIL_REL_PAGE = 1000;
+const ATTRS_PER_PAGE = 500;
+const TYPE_PAGE_LIMIT = 500;
+const COUNT_LOAD_CONCURRENCY = 6;
+
+// Storage keys — shared with landingpage.html so theme/font choices sync
+const USER_PREFS_KEY  = 'landingpage_user_prefs';
+const ADMIN_CFG_KEY   = 'landingpage_admin_config';
+const LEFT_WIDTH_KEY  = 'assetNav.leftWidth';
+
+const state = {
+  csrfToken: null,
+  user: null,
+  topLevelCommunities: [],
+  childCommunitiesByParent: new Map(),
+  domainsByCommunity: new Map(),
+  assetsByDomain: new Map(),
+  assetById: new Map(),
+  expanded: new Set(),
+  selectedKey: null,
+  selectedAssetId: null,
+  // Counts: keyed by community.id -> known total assets (cached subtree sum)
+  // Derived on the fly via getCommunityAssetCount; no separate cache needed
+  // unless perf demands it.
+  domainCountsLoading: new Set(), // domain ids currently fetching counts
+};
+
+// ============================================================================
+// Themes (synced with landingpage.html)
+// ============================================================================
+const THEMES = [
+  { id:'dod-dark',   branch:'Department of Defense', label:'DoD Dark',         mode:'dark',  heroGrad:'linear-gradient(160deg,#04081A 0%,#081440 50%,#04081A 100%)', vars:{'--bg':'#04081A','--surface':'#091028','--surface-2':'#0D1535','--surface-3':'#121B42','--border':'#1A2648','--border-hi':'#243462','--text-1':'#E0E8F8','--text-2':'#7080AC','--text-muted':'#384060','--accent':'#1B6FBA','--accent-hi':'#2585D5','--accent-dim':'rgba(27,111,186,0.13)','--accent-glow':'rgba(27,111,186,0.26)','--gold':'#C8A84B','--gold-dim':'rgba(200,168,75,0.10)','--danger':'#CC4040','--danger-dim':'rgba(204,64,64,0.08)','--row-hover':'rgba(27,111,186,0.07)','--row-active':'rgba(27,111,186,0.14)','--header-banner':'#091028','--header-banner-text':'#E0E8F8','--header-stripe':'linear-gradient(90deg,#1B6FBA,#2585D5,#1B6FBA)'}},
+  { id:'dod-light',  branch:'Department of Defense', label:'DoD Light',        mode:'light', heroGrad:'linear-gradient(160deg,#0D2255 0%,#1A3A7A 50%,#0D2255 100%)', vars:{'--bg':'#F0F4FC','--surface':'#FFFFFF','--surface-2':'#E8EDF7','--surface-3':'#DDE4F2','--border':'#C8D4E8','--border-hi':'#A0B0D0','--text-1':'#0D1C3A','--text-2':'#3A527A','--text-muted':'#7A90B8','--accent':'#1B5FA0','--accent-hi':'#1A72C0','--accent-dim':'rgba(27,95,160,0.10)','--accent-glow':'rgba(27,95,160,0.20)','--gold':'#A07820','--gold-dim':'rgba(160,120,32,0.10)','--danger':'#B83030','--danger-dim':'rgba(184,48,48,0.07)','--row-hover':'rgba(27,95,160,0.05)','--row-active':'rgba(27,95,160,0.11)','--header-banner':'#0D2255','--header-banner-text':'#F0F4FC','--header-stripe':'linear-gradient(90deg,#C8A84B,#E0C060,#C8A84B)'}},
+  { id:'army-dark',  branch:'U.S. Army',             label:'Army Dark',        mode:'dark',  heroGrad:'linear-gradient(160deg,#060804 0%,#101808 50%,#060804 100%)', vars:{'--bg':'#070A05','--surface':'#0E1409','--surface-2':'#141C0D','--surface-3':'#1A2412','--border':'#222C16','--border-hi':'#34421E','--text-1':'#E4DFC6','--text-2':'#84906A','--text-muted':'#3A4228','--accent':'#4A5220','--accent-hi':'#5C6628','--accent-dim':'rgba(74,82,32,0.15)','--accent-glow':'rgba(242,180,0,0.20)','--gold':'#F2B400','--gold-dim':'rgba(242,180,0,0.10)','--danger':'#C84040','--danger-dim':'rgba(200,64,64,0.08)','--row-hover':'rgba(242,180,0,0.05)','--row-active':'rgba(242,180,0,0.10)','--header-banner':'#0E1409','--header-banner-text':'#E4DFC6','--header-stripe':'linear-gradient(90deg,#F2B400,#FFD040,#F2B400)'}},
+  { id:'army-light', branch:'U.S. Army',             label:'Army Light',       mode:'light', heroGrad:'linear-gradient(160deg,#243010 0%,#3A4A18 50%,#243010 100%)', vars:{'--bg':'#F5F3EC','--surface':'#FFFFFF','--surface-2':'#EEE9DC','--surface-3':'#E5DFD0','--border':'#D0C8B0','--border-hi':'#AEA58C','--text-1':'#1A1C0E','--text-2':'#52542C','--text-muted':'#8A8A62','--accent':'#3D4A1A','--accent-hi':'#556828','--accent-dim':'rgba(61,74,26,0.09)','--accent-glow':'rgba(61,74,26,0.20)','--gold':'#B07A00','--gold-dim':'rgba(176,122,0,0.09)','--danger':'#B03030','--danger-dim':'rgba(176,48,48,0.07)','--row-hover':'rgba(61,74,26,0.05)','--row-active':'rgba(192,138,0,0.10)','--header-banner':'#2D3A10','--header-banner-text':'#FAFAF2','--header-stripe':'linear-gradient(90deg,#F2B400,#FFD040,#F2B400)'}},
+  { id:'marines-dark', branch:'U.S. Marine Corps',   label:'Marines Dark',     mode:'dark',  heroGrad:'linear-gradient(160deg,#0A0505 0%,#200808 50%,#0A0505 100%)', vars:{'--bg':'#0B0606','--surface':'#150D0D','--surface-2':'#1C1010','--surface-3':'#241414','--border':'#2E1818','--border-hi':'#482222','--text-1':'#F0E8E0','--text-2':'#A0807A','--text-muted':'#4A2A2A','--accent':'#C8102E','--accent-hi':'#E0182E','--accent-dim':'rgba(200,16,46,0.13)','--accent-glow':'rgba(200,16,46,0.25)','--gold':'#D4AF37','--gold-dim':'rgba(212,175,55,0.10)','--danger':'#CC4040','--danger-dim':'rgba(204,64,64,0.08)','--row-hover':'rgba(200,16,46,0.07)','--row-active':'rgba(200,16,46,0.14)','--header-banner':'#150D0D','--header-banner-text':'#F0E8E0','--header-stripe':'linear-gradient(90deg,#C8102E,#E0182E,#C8102E)'}},
+  { id:'marines-light',branch:'U.S. Marine Corps',   label:'Marines Light',    mode:'light', heroGrad:'linear-gradient(160deg,#5A0A10 0%,#820E18 50%,#5A0A10 100%)', vars:{'--bg':'#FAF4F4','--surface':'#FFFFFF','--surface-2':'#F5ECEC','--surface-3':'#EDE0E0','--border':'#DCCACC','--border-hi':'#C4AAAE','--text-1':'#1E0808','--text-2':'#5A2A2A','--text-muted':'#8A5858','--accent':'#A00C24','--accent-hi':'#C81030','--accent-dim':'rgba(160,12,36,0.09)','--accent-glow':'rgba(160,12,36,0.18)','--gold':'#A07820','--gold-dim':'rgba(160,120,32,0.09)','--danger':'#B03030','--danger-dim':'rgba(176,48,48,0.07)','--row-hover':'rgba(160,12,36,0.05)','--row-active':'rgba(160,12,36,0.10)','--header-banner':'#7A0818','--header-banner-text':'#FAF4F4','--header-stripe':'linear-gradient(90deg,#D4AF37,#E8C84A,#D4AF37)'}},
+  { id:'navy-dark',    branch:'U.S. Navy',            label:'Navy Dark',        mode:'dark',  heroGrad:'linear-gradient(160deg,#04060E 0%,#070C22 50%,#04060E 100%)', vars:{'--bg':'#04060E','--surface':'#080C1C','--surface-2':'#0C1128','--surface-3':'#101634','--border':'#18204A','--border-hi':'#22305E','--text-1':'#DDE8F8','--text-2':'#6878AA','--text-muted':'#303870','--accent':'#BCA545','--accent-hi':'#D4BC52','--accent-dim':'rgba(188,165,69,0.12)','--accent-glow':'rgba(188,165,69,0.22)','--gold':'#BCA545','--gold-dim':'rgba(188,165,69,0.10)','--danger':'#CC4040','--danger-dim':'rgba(204,64,64,0.08)','--row-hover':'rgba(188,165,69,0.06)','--row-active':'rgba(188,165,69,0.12)','--header-banner':'#080C1C','--header-banner-text':'#DDE8F8','--header-stripe':'linear-gradient(90deg,#BCA545,#D4BC52,#BCA545)'}},
+  { id:'navy-light',   branch:'U.S. Navy',            label:'Navy Light',       mode:'light', heroGrad:'linear-gradient(160deg,#040A28 0%,#081440 50%,#040A28 100%)', vars:{'--bg':'#F2F4FA','--surface':'#FFFFFF','--surface-2':'#E8ECF5','--surface-3':'#DDE2EE','--border':'#C4CCE0','--border-hi':'#A0AECC','--text-1':'#08102A','--text-2':'#384068','--text-muted':'#6878A0','--accent':'#091540','--accent-hi':'#0C1C58','--accent-dim':'rgba(9,21,64,0.09)','--accent-glow':'rgba(9,21,64,0.18)','--gold':'#8C7010','--gold-dim':'rgba(140,112,16,0.09)','--danger':'#B03030','--danger-dim':'rgba(176,48,48,0.07)','--row-hover':'rgba(9,21,64,0.05)','--row-active':'rgba(188,165,69,0.12)','--header-banner':'#050E30','--header-banner-text':'#F2F4FA','--header-stripe':'linear-gradient(90deg,#BCA545,#D4BC52,#BCA545)'}},
+  { id:'af-dark',      branch:'U.S. Air Force',       label:'Air Force Dark',   mode:'dark',  heroGrad:'linear-gradient(160deg,#060E1A 0%,#082040 50%,#060E1A 100%)', vars:{'--bg':'#060E1C','--surface':'#0A1428','--surface-2':'#0E1B35','--surface-3':'#122040','--border':'#1A2C50','--border-hi':'#223860','--text-1':'#DCE8F8','--text-2':'#6888B0','--text-muted':'#304060','--accent':'#0578BD','--accent-hi':'#1090D8','--accent-dim':'rgba(5,120,189,0.13)','--accent-glow':'rgba(5,120,189,0.26)','--gold':'#C8A84B','--gold-dim':'rgba(200,168,75,0.10)','--danger':'#CC4040','--danger-dim':'rgba(204,64,64,0.08)','--row-hover':'rgba(5,120,189,0.07)','--row-active':'rgba(5,120,189,0.14)','--header-banner':'#0A1428','--header-banner-text':'#DCE8F8','--header-stripe':'linear-gradient(90deg,#0578BD,#1090D8,#0578BD)'}},
+  { id:'af-light',     branch:'U.S. Air Force',       label:'Air Force Light',  mode:'light', heroGrad:'linear-gradient(160deg,#042045 0%,#073468 50%,#042045 100%)', vars:{'--bg':'#F0F5FC','--surface':'#FFFFFF','--surface-2':'#E5EDF8','--surface-3':'#D8E5F3','--border':'#C0D0E5','--border-hi':'#9CB0D0','--text-1':'#071830','--text-2':'#2A4A70','--text-muted':'#6080AA','--accent':'#0560A0','--accent-hi':'#0778C4','--accent-dim':'rgba(5,96,160,0.09)','--accent-glow':'rgba(5,96,160,0.18)','--gold':'#906010','--gold-dim':'rgba(144,96,16,0.09)','--danger':'#B03030','--danger-dim':'rgba(176,48,48,0.07)','--row-hover':'rgba(5,96,160,0.05)','--row-active':'rgba(5,96,160,0.11)','--header-banner':'#032050','--header-banner-text':'#F0F5FC','--header-stripe':'linear-gradient(90deg,#C8A84B,#E0C060,#C8A84B)'}},
+  { id:'sf-dark',      branch:'U.S. Space Force',     label:'Space Force Dark', mode:'dark',  heroGrad:'linear-gradient(160deg,#04060C 0%,#080C20 40%,#04081A 100%)', vars:{'--bg':'#04060C','--surface':'#080C1E','--surface-2':'#0C1028','--surface-3':'#101432','--border':'#181E3A','--border-hi':'#202848','--text-1':'#D8DEF8','--text-2':'#6068A8','--text-muted':'#282E58','--accent':'#4A5AE8','--accent-hi':'#6070F5','--accent-dim':'rgba(74,90,232,0.13)','--accent-glow':'rgba(74,90,232,0.28)','--gold':'#8878D8','--gold-dim':'rgba(136,120,216,0.12)','--danger':'#CC4040','--danger-dim':'rgba(204,64,64,0.08)','--row-hover':'rgba(74,90,232,0.08)','--row-active':'rgba(74,90,232,0.16)','--header-banner':'#080C1E','--header-banner-text':'#D8DEF8','--header-stripe':'linear-gradient(90deg,#4A5AE8,#6070F5,#4A5AE8)'}},
+  { id:'sf-light',     branch:'U.S. Space Force',     label:'Space Force Light',mode:'light', heroGrad:'linear-gradient(160deg,#08082A 0%,#100C38 50%,#04081A 100%)', vars:{'--bg':'#F4F4FC','--surface':'#FFFFFF','--surface-2':'#EBEBF8','--surface-3':'#E0E0F5','--border':'#CCCCEC','--border-hi':'#AAAADC','--text-1':'#080830','--text-2':'#303078','--text-muted':'#6060A8','--accent':'#3035C8','--accent-hi':'#3A44E0','--accent-dim':'rgba(48,53,200,0.09)','--accent-glow':'rgba(48,53,200,0.18)','--gold':'#6858A0','--gold-dim':'rgba(104,88,160,0.09)','--danger':'#B03030','--danger-dim':'rgba(176,48,48,0.07)','--row-hover':'rgba(48,53,200,0.05)','--row-active':'rgba(48,53,200,0.11)','--header-banner':'#0C0C38','--header-banner-text':'#F4F4FC','--header-stripe':'linear-gradient(90deg,#4A5AE8,#6070F5,#4A5AE8)'}},
+  // Editor Themes
+  { id:'vsc-one-dark',        branch:'Editor Themes', label:'One Dark',        mode:'dark',  heroGrad:'linear-gradient(160deg,#1d2026 0%,#282c34 50%,#1d2026 100%)', vars:{'--bg':'#282c34','--surface':'#21252b','--surface-2':'#2c313a','--surface-3':'#323842','--border':'#3e4451','--border-hi':'#4b5263','--text-1':'#abb2bf','--text-2':'#7f848e','--text-muted':'#4b5263','--accent':'#61afef','--accent-hi':'#7cc1f5','--accent-dim':'rgba(97,175,239,0.13)','--accent-glow':'rgba(97,175,239,0.26)','--gold':'#e5c07b','--gold-dim':'rgba(229,192,123,0.10)','--danger':'#e06c75','--danger-dim':'rgba(224,108,117,0.08)','--row-hover':'rgba(97,175,239,0.07)','--row-active':'rgba(97,175,239,0.14)','--header-banner':'#21252b','--header-banner-text':'#abb2bf','--header-stripe':'linear-gradient(90deg,#61afef,#7cc1f5,#61afef)'}},
+  { id:'vsc-dracula',         branch:'Editor Themes', label:'Dracula',         mode:'dark',  heroGrad:'linear-gradient(160deg,#1e1f29 0%,#282a36 50%,#1e1f29 100%)', vars:{'--bg':'#282a36','--surface':'#21222c','--surface-2':'#2d2f3f','--surface-3':'#343746','--border':'#44475a','--border-hi':'#565c7e','--text-1':'#f8f8f2','--text-2':'#b8bfe8','--text-muted':'#6272a4','--accent':'#bd93f9','--accent-hi':'#cfa8ff','--accent-dim':'rgba(189,147,249,0.13)','--accent-glow':'rgba(189,147,249,0.28)','--gold':'#ffb86c','--gold-dim':'rgba(255,184,108,0.10)','--danger':'#ff5555','--danger-dim':'rgba(255,85,85,0.08)','--row-hover':'rgba(189,147,249,0.07)','--row-active':'rgba(189,147,249,0.14)','--header-banner':'#21222c','--header-banner-text':'#f8f8f2','--header-stripe':'linear-gradient(90deg,#bd93f9,#cfa8ff,#bd93f9)'}},
+  { id:'vsc-tokyo-night',     branch:'Editor Themes', label:'Tokyo Night',     mode:'dark',  heroGrad:'linear-gradient(160deg,#13141f 0%,#1a1b26 50%,#13141f 100%)', vars:{'--bg':'#1a1b26','--surface':'#16161e','--surface-2':'#1f2335','--surface-3':'#292e42','--border':'#292e42','--border-hi':'#3b4261','--text-1':'#c0caf5','--text-2':'#9aa5ce','--text-muted':'#414868','--accent':'#7aa2f7','--accent-hi':'#89b4fa','--accent-dim':'rgba(122,162,247,0.13)','--accent-glow':'rgba(122,162,247,0.28)','--gold':'#e0af68','--gold-dim':'rgba(224,175,104,0.10)','--danger':'#f7768e','--danger-dim':'rgba(247,118,142,0.08)','--row-hover':'rgba(122,162,247,0.07)','--row-active':'rgba(122,162,247,0.14)','--header-banner':'#16161e','--header-banner-text':'#c0caf5','--header-stripe':'linear-gradient(90deg,#7aa2f7,#89b4fa,#7aa2f7)'}},
+  { id:'vsc-catppuccin',      branch:'Editor Themes', label:'Catppuccin',      mode:'dark',  heroGrad:'linear-gradient(160deg,#151521 0%,#1e1e2e 50%,#151521 100%)', vars:{'--bg':'#1e1e2e','--surface':'#181825','--surface-2':'#313244','--surface-3':'#45475a','--border':'#313244','--border-hi':'#45475a','--text-1':'#cdd6f4','--text-2':'#a6adc8','--text-muted':'#585b70','--accent':'#89b4fa','--accent-hi':'#a0c4fc','--accent-dim':'rgba(137,180,250,0.12)','--accent-glow':'rgba(137,180,250,0.26)','--gold':'#fab387','--gold-dim':'rgba(250,179,135,0.10)','--danger':'#f38ba8','--danger-dim':'rgba(243,139,168,0.08)','--row-hover':'rgba(137,180,250,0.07)','--row-active':'rgba(137,180,250,0.14)','--header-banner':'#181825','--header-banner-text':'#cdd6f4','--header-stripe':'linear-gradient(90deg,#89b4fa,#a0c4fc,#89b4fa)'}},
+  { id:'vsc-nord',            branch:'Editor Themes', label:'Nord',            mode:'dark',  heroGrad:'linear-gradient(160deg,#242932 0%,#2e3440 50%,#242932 100%)', vars:{'--bg':'#2e3440','--surface':'#3b4252','--surface-2':'#434c5e','--surface-3':'#4c566a','--border':'#404858','--border-hi':'#4c566a','--text-1':'#eceff4','--text-2':'#d8dee9','--text-muted':'#616e88','--accent':'#5e81ac','--accent-hi':'#81a1c1','--accent-dim':'rgba(94,129,172,0.18)','--accent-glow':'rgba(94,129,172,0.32)','--gold':'#ebcb8b','--gold-dim':'rgba(235,203,139,0.10)','--danger':'#bf616a','--danger-dim':'rgba(191,97,106,0.08)','--row-hover':'rgba(94,129,172,0.10)','--row-active':'rgba(94,129,172,0.20)','--header-banner':'#3b4252','--header-banner-text':'#eceff4','--header-stripe':'linear-gradient(90deg,#5e81ac,#81a1c1,#5e81ac)'}},
+  { id:'vsc-monokai',         branch:'Editor Themes', label:'Monokai',         mode:'dark',  heroGrad:'linear-gradient(160deg,#1e1f1a 0%,#272822 50%,#1e1f1a 100%)', vars:{'--bg':'#272822','--surface':'#1e1f1a','--surface-2':'#2d2e27','--surface-3':'#383830','--border':'#49483e','--border-hi':'#75715e','--text-1':'#f8f8f2','--text-2':'#cfcfc2','--text-muted':'#75715e','--accent':'#a6e22e','--accent-hi':'#c1f548','--accent-dim':'rgba(166,226,46,0.10)','--accent-glow':'rgba(166,226,46,0.20)','--gold':'#e6db74','--gold-dim':'rgba(230,219,116,0.10)','--danger':'#f92672','--danger-dim':'rgba(249,38,114,0.08)','--row-hover':'rgba(166,226,46,0.06)','--row-active':'rgba(166,226,46,0.12)','--header-banner':'#1e1f1a','--header-banner-text':'#f8f8f2','--header-stripe':'linear-gradient(90deg,#a6e22e,#c1f548,#a6e22e)'}},
+  { id:'vsc-solarized-dark',  branch:'Editor Themes', label:'Solarized Dark',  mode:'dark',  heroGrad:'linear-gradient(160deg,#001e27 0%,#002b36 50%,#001e27 100%)', vars:{'--bg':'#002b36','--surface':'#073642','--surface-2':'#094655','--surface-3':'#0d5568','--border':'#0c3e4d','--border-hi':'#1a5268','--text-1':'#93a1a1','--text-2':'#657b83','--text-muted':'#405b60','--accent':'#268bd2','--accent-hi':'#389de4','--accent-dim':'rgba(38,139,210,0.15)','--accent-glow':'rgba(38,139,210,0.28)','--gold':'#b58900','--gold-dim':'rgba(181,137,0,0.12)','--danger':'#dc322f','--danger-dim':'rgba(220,50,47,0.08)','--row-hover':'rgba(38,139,210,0.08)','--row-active':'rgba(38,139,210,0.16)','--header-banner':'#073642','--header-banner-text':'#93a1a1','--header-stripe':'linear-gradient(90deg,#268bd2,#389de4,#268bd2)'}},
+  { id:'vsc-github-dark',     branch:'Editor Themes', label:'GitHub Dark',     mode:'dark',  heroGrad:'linear-gradient(160deg,#090d12 0%,#0d1117 50%,#090d12 100%)', vars:{'--bg':'#0d1117','--surface':'#161b22','--surface-2':'#1c2128','--surface-3':'#22272e','--border':'#30363d','--border-hi':'#3d444d','--text-1':'#e6edf3','--text-2':'#848d97','--text-muted':'#484f58','--accent':'#58a6ff','--accent-hi':'#79b8ff','--accent-dim':'rgba(88,166,255,0.12)','--accent-glow':'rgba(88,166,255,0.25)','--gold':'#d29922','--gold-dim':'rgba(210,153,34,0.10)','--danger':'#f85149','--danger-dim':'rgba(248,81,73,0.08)','--row-hover':'rgba(88,166,255,0.07)','--row-active':'rgba(88,166,255,0.14)','--header-banner':'#161b22','--header-banner-text':'#e6edf3','--header-stripe':'linear-gradient(90deg,#58a6ff,#79b8ff,#58a6ff)'}},
+  { id:'vsc-solarized-light', branch:'Editor Themes', label:'Solarized Light', mode:'light', heroGrad:'linear-gradient(160deg,#8e7a00 0%,#b58900 50%,#8e7a00 100%)', vars:{'--bg':'#fdf6e3','--surface':'#eee8d5','--surface-2':'#e8e2ce','--surface-3':'#ddd8ca','--border':'#d4cebf','--border-hi':'#b8b4a8','--text-1':'#586e75','--text-2':'#657b83','--text-muted':'#93a1a1','--accent':'#268bd2','--accent-hi':'#389de4','--accent-dim':'rgba(38,139,210,0.10)','--accent-glow':'rgba(38,139,210,0.20)','--gold':'#b58900','--gold-dim':'rgba(181,137,0,0.10)','--danger':'#dc322f','--danger-dim':'rgba(220,50,47,0.07)','--row-hover':'rgba(38,139,210,0.06)','--row-active':'rgba(38,139,210,0.12)','--header-banner':'#b58900','--header-banner-text':'#fdf6e3','--header-stripe':'linear-gradient(90deg,#268bd2,#389de4,#268bd2)'}},
+  { id:'vsc-github-light',    branch:'Editor Themes', label:'GitHub Light',    mode:'light', heroGrad:'linear-gradient(160deg,#0550ae 0%,#0969da 50%,#0550ae 100%)', vars:{'--bg':'#ffffff','--surface':'#f6f8fa','--surface-2':'#eaeef2','--surface-3':'#d0d7de','--border':'#d0d7de','--border-hi':'#afc6dd','--text-1':'#1f2328','--text-2':'#636c76','--text-muted':'#9198a1','--accent':'#0969da','--accent-hi':'#0860ca','--accent-dim':'rgba(9,105,218,0.10)','--accent-glow':'rgba(9,105,218,0.20)','--gold':'#9a6700','--gold-dim':'rgba(154,103,0,0.09)','--danger':'#cf222e','--danger-dim':'rgba(207,34,46,0.07)','--row-hover':'rgba(9,105,218,0.05)','--row-active':'rgba(9,105,218,0.10)','--header-banner':'#0550ae','--header-banner-text':'#ffffff','--header-stripe':'linear-gradient(90deg,#d29922,#e3ad28,#d29922)'}},
+];
+const BRANCHES = ['Department of Defense','U.S. Army','U.S. Marine Corps','U.S. Navy','U.S. Air Force','U.S. Space Force','Editor Themes'];
+
+const FONT_BODY_OPTIONS = [
+  { id:"'Barlow', sans-serif",        label:"Barlow (default)" },
+  { id:"'Inter', sans-serif",         label:"Inter" },
+  { id:"'Roboto', sans-serif",        label:"Roboto" },
+  { id:"'Open Sans', sans-serif",     label:"Open Sans" },
+  { id:"'Lato', sans-serif",          label:"Lato" },
+  { id:"system-ui, sans-serif",       label:"System UI" },
+  { id:"Georgia, serif",              label:"Georgia (serif)" }
+];
+const FONT_DISPLAY_OPTIONS = [
+  { id:"'Barlow Condensed', sans-serif", label:"Barlow Condensed (default)" },
+  { id:"'Oswald', sans-serif",           label:"Oswald" },
+  { id:"'Bebas Neue', sans-serif",       label:"Bebas Neue" },
+  { id:"'Roboto Condensed', sans-serif", label:"Roboto Condensed" },
+  { id:"'Barlow', sans-serif",           label:"Barlow (match body)" },
+  { id:"'Inter', sans-serif",            label:"Inter" },
+  { id:"system-ui, sans-serif",          label:"System UI" }
+];
+
+// ============================================================================
+// API helpers
+// ============================================================================
+async function api(path, opts = {}) {
+  const headers = Object.assign({ 'Accept': 'application/json' }, opts.headers || {});
+  if (state.csrfToken) headers['X-CSRF-TOKEN'] = state.csrfToken;
+  if (opts.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+  const res = await fetch(BASE_URL + path, {
+    method: opts.method || 'GET', credentials: 'include', headers,
+    body: opts.body || undefined,
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => '');
+    throw new Error(`${res.status} ${res.statusText} — ${path}${txt ? `: ${txt.slice(0, 200)}` : ''}`);
+  }
+  const ct = res.headers.get('content-type') || '';
+  return ct.includes('application/json') ? res.json() : res.text();
+}
+
+async function gql(query) {
+  const data = await api('/graphql/knowledgeGraph/v1', {
+    method: 'POST', body: JSON.stringify({ query }),
+  });
+  if (data.errors) throw new Error('GraphQL: ' + JSON.stringify(data.errors));
+  return data.data;
+}
+
+async function pagedRest(path) {
+  const all = [];
+  let offset = 0;
+  const sep = path.includes('?') ? '&' : '?';
+  while (true) {
+    const page = await api(`${path}${sep}limit=${PAGE_LIMIT}&offset=${offset}`);
+    const res = (page && page.results) || [];
+    all.push(...res);
+    if (res.length < PAGE_LIMIT) break;
+    offset += PAGE_LIMIT;
+    if (offset > MAX_OFFSET) break;
+  }
+  return all;
+}
+
+async function pagedGqlCustom(buildQuery, extractList, pageLimit) {
+  const all = [];
+  let offset = 0;
+  while (true) {
+    const data = await gql(buildQuery(pageLimit, offset));
+    const res = extractList(data) || [];
+    all.push(...res);
+    if (res.length < pageLimit) break;
+    offset += pageLimit;
+    if (offset > MAX_OFFSET) break;
+  }
+  return all;
+}
+const pagedGql = (b, e) => pagedGqlCustom(b, e, PAGE_LIMIT);
+
+// ============================================================================
+// Utilities
+// ============================================================================
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+const escapeAttr = escapeHtml;
+const esc = escapeHtml;
+
+function sanitizeRichText(html) {
+  if (html == null) return '';
+  const allowed = /^(p|br|b|strong|i|em|u|ul|ol|li|a|span|div|code|pre|h[1-6]|blockquote)$/i;
+  const tpl = document.createElement('template');
+  tpl.innerHTML = String(html);
+  const walk = (node) => {
+    const children = Array.from(node.childNodes);
+    for (const c of children) {
+      if (c.nodeType === 1) {
+        const tag = c.tagName.toLowerCase();
+        if (!allowed.test(tag)) {
+          c.replaceWith(document.createTextNode(c.textContent || ''));
+          continue;
+        }
+        for (const attr of Array.from(c.attributes)) {
+          if (tag === 'a' && (attr.name === 'href' || attr.name === 'title')) {
+            if (attr.name === 'href' && /^\s*javascript:/i.test(attr.value)) c.removeAttribute('href');
+            continue;
+          }
+          c.removeAttribute(attr.name);
+        }
+        if (tag === 'a') {
+          c.setAttribute('target', '_blank');
+          c.setAttribute('rel', 'noopener noreferrer');
+        }
+        walk(c);
+      } else if (c.nodeType === 8) {
+        c.remove();
+      }
+    }
+  };
+  walk(tpl.content);
+  return tpl.innerHTML;
+}
+
+function looksLikeHtml(s) {
+  return typeof s === 'string' && /<\/?[a-z][^>]*>/i.test(s);
+}
+
+function initials(name) {
+  return String(name || '?').trim().split(/\s+/).slice(0, 2)
+    .map(p => p[0] || '').join('').toUpperCase() || '?';
+}
+
+function formatDate(v) {
+  if (!v && v !== 0) return '';
+  const n = Number(v);
+  const d = isNaN(n) ? new Date(v) : new Date(n);
+  if (isNaN(d.getTime())) return String(v);
+  return d.toLocaleString();
+}
+
+function formatCount(n) {
+  if (n == null) return '';
+  if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace(/\.0$/, '') + 'M';
+  if (n >= 1e4) return (n / 1e3).toFixed(0) + 'k';
+  if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'k';
+  return String(n);
+}
+
+function debounce(fn, ms) {
+  let t; return function (...args) { clearTimeout(t); t = setTimeout(() => fn.apply(this, args), ms); };
+}
+
+async function pMap(items, mapper, concurrency = 6) {
+  const results = new Array(items.length);
+  let idx = 0;
+  const workers = Array.from({ length: Math.min(concurrency, items.length || 1) }, async () => {
+    while (true) {
+      const i = idx++;
+      if (i >= items.length) break;
+      results[i] = await mapper(items[i], i);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
+function getUserPrefs() { try { return JSON.parse(localStorage.getItem(USER_PREFS_KEY) || '{}'); } catch { return {}; } }
+function saveUserPrefs(p) { try { localStorage.setItem(USER_PREFS_KEY, JSON.stringify(p)); } catch {} }
+function getAdminConfig() { try { return JSON.parse(localStorage.getItem(ADMIN_CFG_KEY) || '{}'); } catch { return {}; } }
+function getTheme(id) { return THEMES.find(t => t.id === id) || THEMES[0]; }
+
+function getEffectivePrefs() {
+  const admin = getAdminConfig(), user = getUserPrefs();
+  return {
+    themeId:     user.themeId  ?? admin.themeId  ?? 'dod-dark',
+    fontBody:    user.fontBody    ?? admin.fontBody    ?? "'Barlow', sans-serif",
+    fontDisplay: user.fontDisplay ?? admin.fontDisplay ?? "'Barlow Condensed', sans-serif",
+    fontScale:   user.fontScale   ?? admin.fontScale   ?? 1,
+    org:         admin.org        || 'Data Catalog',
+    title:       admin.title      || 'Asset Navigator',
+  };
+}
+
+// ============================================================================
+// Theme & font application
+// ============================================================================
+function applyTheme(themeId) {
+  const theme = getTheme(themeId);
+  const root = document.documentElement;
+  root.setAttribute('data-mode', theme.mode);
+  for (const [p, v] of Object.entries(theme.vars)) root.style.setProperty(p, v);
+  root.style.colorScheme = theme.mode;
+}
+
+function applyFontConfig({ fontBody, fontDisplay, fontScale } = {}) {
+  const body    = fontBody    || "'Barlow', sans-serif";
+  const display = fontDisplay || "'Barlow Condensed', sans-serif";
+  const scale   = parseFloat(fontScale) || 1;
+  const root = document.documentElement;
+  root.style.setProperty('--font-body', body);
+  root.style.setProperty('--font-display', display);
+  root.style.setProperty('--font-scale', scale);
+
+  let st = document.getElementById('fontOverride');
+  if (!st) { st = document.createElement('style'); st.id = 'fontOverride'; document.head.appendChild(st); }
+  const out = [];
+  for (const sheet of document.styleSheets) {
+    if (sheet.ownerNode && sheet.ownerNode.id === 'fontOverride') continue;
+    let rules; try { rules = sheet.cssRules; } catch (e) { continue; }
+    if (!rules) continue;
+    for (const rule of rules) {
+      if (!rule.style || !rule.selectorText) continue;
+      const fs = rule.style.fontSize, ff = rule.style.fontFamily;
+      const decl = [];
+      if (fs) {
+        const m = fs.match(/^(\d+(?:\.\d+)?)px$/);
+        if (m) decl.push(`font-size:${(parseFloat(m[1]) * scale).toFixed(2)}px !important`);
+      }
+      if (ff) {
+        let nf = ff;
+        if (/Barlow Condensed/i.test(nf)) nf = display;
+        else if (/Barlow/i.test(nf) && !/Condensed/i.test(nf)) nf = body;
+        if (nf !== ff) decl.push(`font-family:${nf} !important`);
+      }
+      if (decl.length) out.push(`${rule.selectorText}{${decl.join(';')}}`);
+    }
+  }
+  st.textContent = out.join('\n');
+}
+
+// ============================================================================
+// Bootstrap
+// ============================================================================
+async function bootstrap() {
+  // Apply prefs first so theme is correct before any render
+  const prefs = getEffectivePrefs();
+  applyTheme(prefs.themeId);
+  applyFontConfig(prefs);
+
+  // Brand text from admin config
+  const adminCfg = getAdminConfig();
+  if (adminCfg.org) document.getElementById('brandLabel').textContent = adminCfg.org;
+  if (adminCfg.title) {
+    // Keep "Asset Navigator" as the page title; show org/title in eyebrow
+    document.querySelector('#eyebrowTag span:last-child').textContent =
+      `${adminCfg.org || 'Data Catalog'} · Asset Navigator`;
+  }
+  document.getElementById('orgChip').textContent = (adminCfg.org || 'Data Catalog').toUpperCase();
+  document.getElementById('eyebrowDate').textContent =
+    new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }).toUpperCase();
+
+  // Brand shield SVG
+  const theme = getTheme(prefs.themeId);
+  const ac = theme.vars['--accent'] || '#1B6FBA';
+  const gl = theme.vars['--gold'] || '#C8A84B';
+  document.getElementById('brandShield').innerHTML = shieldSVG(32, ac, 'rgba(0,0,0,.18)', gl);
+
+  // Build customize panel content
+  buildCustomizePanel();
+
+  // Wire UI
+  setupSplitter();
+  setupTreeFilter();
+  setupGlobalSearch();
+  setupCustomizePanel();
+  document.getElementById('refreshTreeBtn').addEventListener('click', () => loadCommunities(true));
+
+  // Connect to Collibra
+  try {
+    const session = await fetch(BASE_URL + '/rest/2.0/auth/sessions/current?include=csrfToken', {
+      credentials: 'include', headers: { 'Accept': 'application/json' },
+    });
+    if (!session.ok) {
+      throw new Error(`Not signed in to Collibra (status ${session.status}). Please log in and reload.`);
+    }
+    const data = await session.json();
+    state.csrfToken = data.csrfToken;
+    state.user = data;
+
+    // Session payload usually only carries userName/userId. Try to fetch the
+    // full user record so we can display the user's real name.
+    let profile = data;
+    if (data.userId) {
+      try {
+        const userRes = await fetch(BASE_URL + `/rest/2.0/users/${encodeURIComponent(data.userId)}`, {
+          credentials: 'include', headers: { 'Accept': 'application/json' },
+        });
+        if (userRes.ok) {
+          const u = await userRes.json();
+          profile = Object.assign({}, data, u);
+          state.user = profile;
+        }
+      } catch (_) { /* non-fatal */ }
+    }
+
+    const fullName = `${profile.firstName || ''} ${profile.lastName || ''}`.trim();
+    const userName = fullName || profile.userName || profile.userId || 'User';
+    const email = profile.emailAddress || profile.email || '';
+    document.getElementById('userName').textContent = userName;
+    document.getElementById('userAvatar').textContent = initials(userName);
+    const chip = document.getElementById('userChip');
+    chip.setAttribute('aria-label', `Signed in as ${userName}`);
+    if (email) chip.title = email;
+
+    await loadCommunities(false);
+
+    // Deep link
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const assetParam = hash.get('asset');
+    if (assetParam) selectAsset(assetParam);
+  } catch (err) {
+    document.getElementById('treeScroll').innerHTML =
+      `<div class="banner-error"><div><div class="banner-error-title">Connection Error</div><div>${escapeHtml(err.message)}</div></div></div>`;
+  }
+}
+
+// SVG shield (matches landing page)
+function shieldSVG(w, stroke, fill, star, cssClass = '') {
+  const h = Math.round(w * 1.15);
+  return `<svg ${cssClass ? `class="${cssClass}"` : ''}width="${w}" height="${h}" viewBox="0 0 40 46" fill="none" aria-hidden="true"><path d="M20 2L38 9v19C38 39.5 20 44 20 44S2 39.5 2 28V9z" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/><path d="M20 5L35 11v17C35 36.5 20 41 20 41S5 36.5 5 28V11z" fill="rgba(0,0,0,.05)" stroke="${stroke}" stroke-width=".8" stroke-opacity=".35"/><polygon points="20,12 22.2,18.5 29.2,18.7 23.7,22.8 25.8,29.4 20,25.6 14.2,29.4 16.3,22.8 10.8,18.7 17.8,18.5" fill="${star}"/></svg>`;
+}
+
+// ============================================================================
+// Communities
+// ============================================================================
+async function loadCommunities(force) {
+  if (force) {
+    state.topLevelCommunities = [];
+    state.childCommunitiesByParent.clear();
+    state.domainsByCommunity.clear();
+    state.assetsByDomain.clear();
+    state.expanded.clear();
+    state.domainCountsLoading.clear();
+  }
+  const scroll = document.getElementById('treeScroll');
+  scroll.innerHTML = '<div class="tree-loading"><span class="spinner"></span> Loading communities…</div>';
+
+  try {
+    const all = await pagedRest('/rest/2.0/communities?excludeMeta=true&sortField=NAME&sortOrder=ASC');
+    state.topLevelCommunities = all.filter(c => !c.parent).sort((a, b) => a.name.localeCompare(b.name));
+    for (const c of all) {
+      if (c.parent && c.parent.id) {
+        if (!state.childCommunitiesByParent.has(c.parent.id))
+          state.childCommunitiesByParent.set(c.parent.id, []);
+        state.childCommunitiesByParent.get(c.parent.id).push(c);
+      }
+    }
+    for (const arr of state.childCommunitiesByParent.values()) {
+      arr.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    document.getElementById('treeCount').textContent = state.topLevelCommunities.length;
+    renderTree();
+  } catch (err) {
+    scroll.innerHTML = `<div class="banner-error"><div><div class="banner-error-title">Load Error</div><div>${escapeHtml(err.message)}</div></div></div>`;
+  }
+}
+
+// ============================================================================
+// Count aggregation
+// ============================================================================
+function getDomainAssetCount(domainId) {
+  const cached = state.assetsByDomain.get(domainId);
+  if (!cached) return null;
+  return cached.typeBuckets.reduce((sum, b) => sum + (b.total || 0), 0);
+}
+
+function getCommunityAssetCount(communityId) {
+  let total = 0;
+  let known = false;
+  // Sum sub-community counts
+  const subs = state.childCommunitiesByParent.get(communityId) || [];
+  for (const sub of subs) {
+    const subCount = getCommunityAssetCount(sub.id);
+    if (subCount !== null) { total += subCount; known = true; }
+  }
+  // Sum domain counts (only counts loaded domains within loaded list)
+  const doms = state.domainsByCommunity.get(communityId);
+  if (doms) {
+    known = true;
+    for (const d of doms) {
+      const dCount = getDomainAssetCount(d.id);
+      if (dCount !== null) total += dCount;
+    }
+  }
+  return known ? total : null;
+}
+
+function refreshCountChips() {
+  document.querySelectorAll('[data-count-com]').forEach(el => {
+    const id = el.dataset.countCom;
+    const c = getCommunityAssetCount(id);
+    if (c === null) {
+      el.classList.add('hidden');
+    } else {
+      el.classList.remove('hidden');
+      el.classList.remove('loading');
+      el.textContent = formatCount(c);
+      el.title = `${c.toLocaleString()} assets`;
+    }
+  });
+  document.querySelectorAll('[data-count-dom]').forEach(el => {
+    const id = el.dataset.countDom;
+    const c = getDomainAssetCount(id);
+    if (c === null) {
+      if (state.domainCountsLoading.has(id)) {
+        el.classList.remove('hidden');
+        el.classList.add('loading');
+        el.textContent = '…';
+      } else {
+        el.classList.add('hidden');
+      }
+    } else {
+      el.classList.remove('hidden');
+      el.classList.remove('loading');
+      el.textContent = formatCount(c);
+      el.title = `${c.toLocaleString()} assets`;
+    }
+  });
+}
+
+// Background load: fetch type-bucket counts for a list of domains in parallel.
+// Updates count chips as each completes.
+async function backgroundLoadDomainCounts(domains) {
+  const todo = domains.filter(d => !state.assetsByDomain.has(d.id) && !state.domainCountsLoading.has(d.id));
+  if (!todo.length) { refreshCountChips(); return; }
+  for (const d of todo) state.domainCountsLoading.add(d.id);
+  refreshCountChips();
+  await pMap(todo, async (d) => {
+    try {
+      const buckets = await loadDomainTypeBuckets(d.id);
+      state.assetsByDomain.set(d.id, buckets);
+    } catch (e) {
+      // Leave count unknown on error; clear loading flag below
+    } finally {
+      state.domainCountsLoading.delete(d.id);
+      refreshCountChips();
+    }
+  }, COUNT_LOAD_CONCURRENCY);
+}
+
+// ============================================================================
+// Tree rendering
+// ============================================================================
+function renderTree() {
+  const scroll = document.getElementById('treeScroll');
+  scroll.innerHTML = '';
+  if (!state.topLevelCommunities.length) {
+    scroll.innerHTML = '<div class="tree-empty">No communities found.</div>';
+    return;
+  }
+  const filterText = (document.getElementById('treeFilter').value || '').trim().toLowerCase();
+  for (const c of state.topLevelCommunities) {
+    const node = buildCommunityNode(c, filterText);
+    if (node) scroll.appendChild(node);
+  }
+  if (!scroll.children.length) {
+    scroll.innerHTML = '<div class="tree-empty">No matches.</div>';
+  }
+  refreshCountChips();
+}
+
+function nodeKey(kind, id, parentKey) {
+  return (parentKey ? parentKey + '/' : '') + kind + ':' + id;
+}
+
+function buildCommunityNode(community, filterText, parentKey) {
+  const key = nodeKey('com', community.id, parentKey);
+  const childCommunities = state.childCommunitiesByParent.get(community.id) || [];
+  const matchSelf = !filterText || community.name.toLowerCase().includes(filterText);
+  if (filterText && !matchSelf) {
+    const anyChildMatches =
+      childCommunities.some(c => c.name.toLowerCase().includes(filterText)) ||
+      anyCachedDomainMatches(community.id, filterText);
+    if (!anyChildMatches) return null;
+  }
+
+  const wrap = document.createElement('div');
+  wrap.className = 'tree-node';
+  const row = document.createElement('div');
+  row.className = 'tree-row' + (state.selectedKey === key ? ' selected' : '');
+  row.dataset.key = key;
+  const isOpen = state.expanded.has(key);
+  const count = getCommunityAssetCount(community.id);
+  row.innerHTML =
+    `<span class="tree-twisty${isOpen ? ' open' : ''}" aria-hidden="true">▶</span>` +
+    `<span class="node-icon community" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="3.2" r="1.6"/><circle cx="3.2" cy="11.5" r="1.6"/><circle cx="12.8" cy="11.5" r="1.6"/><path d="M8 4.8 L4 10.2 M8 4.8 L12 10.2 M4.6 11.5 L11.4 11.5"/></svg></span>` +
+    `<span class="node-label">${escapeHtml(community.name)}</span>` +
+    `<span class="node-count${count === null ? ' hidden' : ''}" data-count-com="${escapeAttr(community.id)}">${count !== null ? formatCount(count) : ''}</span>`;
+  row.addEventListener('click', () => toggleNode(key, row, () => buildCommunityChildren(community, key, filterText)));
+  wrap.appendChild(row);
+
+  if (isOpen) {
+    const children = document.createElement('div');
+    children.className = 'tree-children';
+    children.dataset.parentKey = key;
+    wrap.appendChild(children);
+    buildCommunityChildren(community, key, filterText, children);
+  }
+  return wrap;
+}
+
+function anyCachedDomainMatches(communityId, filterText) {
+  const ds = state.domainsByCommunity.get(communityId);
+  if (ds && ds.some(d => d.name.toLowerCase().includes(filterText))) return true;
+  for (const child of (state.childCommunitiesByParent.get(communityId) || [])) {
+    if (anyCachedDomainMatches(child.id, filterText)) return true;
+  }
+  return false;
+}
+
+async function buildCommunityChildren(community, parentKey, filterText, container) {
+  if (!container) {
+    const row = document.querySelector(`.tree-row[data-key="${CSS.escape(parentKey)}"]`);
+    if (!row) return;
+    let next = row.parentElement.querySelector(':scope > .tree-children');
+    if (!next) {
+      next = document.createElement('div');
+      next.className = 'tree-children';
+      next.dataset.parentKey = parentKey;
+      row.parentElement.appendChild(next);
+    }
+    container = next;
+  }
+  container.innerHTML = '<div class="tree-loading"><span class="spinner"></span> Loading…</div>';
+
+  try {
+    const subs = state.childCommunitiesByParent.get(community.id) || [];
+    let domains = state.domainsByCommunity.get(community.id);
+    if (!domains) {
+      domains = await loadDomainsForCommunity(community.id);
+      state.domainsByCommunity.set(community.id, domains);
+    }
+
+    container.innerHTML = '';
+    if (subs.length) {
+      const hdr = document.createElement('div');
+      hdr.className = 'group-header';
+      hdr.textContent = `Communities · ${subs.length}`;
+      container.appendChild(hdr);
+      for (const sc of subs) {
+        const n = buildCommunityNode(sc, filterText, parentKey);
+        if (n) container.appendChild(n);
+      }
+    }
+    if (domains.length) {
+      const hdr = document.createElement('div');
+      hdr.className = 'group-header';
+      hdr.textContent = `Domains · ${domains.length}`;
+      container.appendChild(hdr);
+      for (const d of domains) {
+        const n = buildDomainNode(d, filterText, parentKey);
+        if (n) container.appendChild(n);
+      }
+    }
+    if (!subs.length && !domains.length) {
+      container.innerHTML = '<div class="tree-empty">Empty community.</div>';
+    }
+
+    // Background load counts for newly visible domains so users see totals
+    // without having to manually expand each domain.
+    if (domains.length) {
+      backgroundLoadDomainCounts(domains);
+    }
+    refreshCountChips();
+  } catch (err) {
+    container.innerHTML = `<div class="banner-error"><div><div class="banner-error-title">Load Error</div><div>${escapeHtml(err.message)}</div></div></div>`;
+  }
+}
+
+async function loadDomainsForCommunity(communityId) {
+  return pagedRest(`/rest/2.0/domains?communityId=${encodeURIComponent(communityId)}&sortField=NAME&sortOrder=ASC`);
+}
+
+function buildDomainNode(domain, filterText, parentKey) {
+  const key = nodeKey('dom', domain.id, parentKey);
+  const matchSelf = !filterText || domain.name.toLowerCase().includes(filterText);
+  if (filterText && !matchSelf) {
+    const cached = state.assetsByDomain.get(domain.id);
+    const anyTypeMatches = cached && cached.typeBuckets.some(b =>
+      b.typeName.toLowerCase().includes(filterText) ||
+      ((cached.pages.get(b.typeId) || { items: [] }).items || [])
+        .some(a => (a.displayName || '').toLowerCase().includes(filterText))
+    );
+    if (!anyTypeMatches) return null;
+  }
+
+  const wrap = document.createElement('div');
+  wrap.className = 'tree-node';
+  const row = document.createElement('div');
+  row.className = 'tree-row' + (state.selectedKey === key ? ' selected' : '');
+  row.dataset.key = key;
+  const isOpen = state.expanded.has(key);
+  const count = getDomainAssetCount(domain.id);
+  const loading = state.domainCountsLoading.has(domain.id);
+  row.innerHTML =
+    `<span class="tree-twisty${isOpen ? ' open' : ''}" aria-hidden="true">▶</span>` +
+    `<span class="node-icon domain" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.8 L13.6 4.8 L8 7.8 L2.4 4.8 Z"/><path d="M2.4 8 L8 11 L13.6 8"/><path d="M2.4 11.2 L8 14.2 L13.6 11.2"/></svg></span>` +
+    `<span class="node-label">${escapeHtml(domain.name)}</span>` +
+    `<span class="node-count${count === null && !loading ? ' hidden' : ''}${loading ? ' loading' : ''}" data-count-dom="${escapeAttr(domain.id)}">${count !== null ? formatCount(count) : (loading ? '…' : '')}</span>`;
+  row.addEventListener('click', () => toggleNode(key, row, () => buildDomainChildren(domain, key, filterText)));
+  wrap.appendChild(row);
+
+  if (isOpen) {
+    const children = document.createElement('div');
+    children.className = 'tree-children';
+    children.dataset.parentKey = key;
+    wrap.appendChild(children);
+    buildDomainChildren(domain, key, filterText, children);
+  }
+  return wrap;
+}
+
+async function buildDomainChildren(domain, parentKey, filterText, container) {
+  if (!container) {
+    const row = document.querySelector(`.tree-row[data-key="${CSS.escape(parentKey)}"]`);
+    if (!row) return;
+    let next = row.parentElement.querySelector(':scope > .tree-children');
+    if (!next) {
+      next = document.createElement('div');
+      next.className = 'tree-children';
+      next.dataset.parentKey = parentKey;
+      row.parentElement.appendChild(next);
+    }
+    container = next;
+  }
+  container.innerHTML = '<div class="tree-loading"><span class="spinner"></span> Loading types…</div>';
+
+  try {
+    let cached = state.assetsByDomain.get(domain.id);
+    if (!cached) {
+      cached = await loadDomainTypeBuckets(domain.id);
+      state.assetsByDomain.set(domain.id, cached);
+      refreshCountChips();
+    }
+
+    container.innerHTML = '';
+    const buckets = cached.typeBuckets;
+    if (!buckets.length) {
+      container.innerHTML = '<div class="tree-empty">No assets.</div>';
+      return;
+    }
+
+    const visible = filterText
+      ? buckets.filter(b => b.typeName.toLowerCase().includes(filterText))
+      : buckets;
+    if (!visible.length) {
+      container.innerHTML = '<div class="tree-empty">No matches.</div>';
+      return;
+    }
+
+    for (const bucket of visible) {
+      container.appendChild(buildTypeNode(domain.id, bucket, parentKey, filterText));
+    }
+  } catch (err) {
+    container.innerHTML = `<div class="banner-error"><div><div class="banner-error-title">Load Error</div><div>${escapeHtml(err.message)}</div></div></div>`;
+  }
+}
+
+function buildTypeNode(domainId, bucket, parentKey, filterText) {
+  const typeKey = nodeKey('typ', bucket.typeId, parentKey);
+  const isOpen = state.expanded.has(typeKey);
+
+  const tnode = document.createElement('div');
+  tnode.className = 'tree-node';
+  const trow = document.createElement('div');
+  trow.className = 'tree-row';
+  trow.dataset.key = typeKey;
+  trow.innerHTML =
+    `<span class="tree-twisty${isOpen ? ' open' : ''}" aria-hidden="true">▶</span>` +
+    `<span class="node-icon type" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3" width="11" height="10" rx="1"/><path d="M2.5 6.5 H13.5 M6 3 V13"/></svg></span>` +
+    `<span class="node-label">${escapeHtml(bucket.typeName)}</span>` +
+    `<span class="node-count">${formatCount(bucket.total)}</span>`;
+  trow.addEventListener('click', () => toggleNode(typeKey, trow, () => {
+    const c = trow.parentElement.querySelector(':scope > .tree-children');
+    if (c) renderTypeAssets(domainId, bucket, typeKey, filterText, c);
+  }));
+  tnode.appendChild(trow);
+
+  if (isOpen) {
+    const c = document.createElement('div');
+    c.className = 'tree-children';
+    c.dataset.parentKey = typeKey;
+    renderTypeAssets(domainId, bucket, typeKey, filterText, c);
+    tnode.appendChild(c);
+  }
+  return tnode;
+}
+
+async function renderTypeAssets(domainId, bucket, typeKey, filterText, container) {
+  const cached = state.assetsByDomain.get(domainId);
+  if (!cached) return;
+  let page = cached.pages.get(bucket.typeId);
+  if (!page) {
+    container.innerHTML = '<div class="tree-loading"><span class="spinner"></span> Loading assets…</div>';
+    try {
+      const items = await loadAssetsForDomainType(domainId, bucket.typeId, TYPE_PAGE_LIMIT, 0);
+      page = {
+        items,
+        loaded: items.length,
+        total: bucket.total,
+        done: items.length >= bucket.total || items.length < TYPE_PAGE_LIMIT,
+      };
+      cached.pages.set(bucket.typeId, page);
+      for (const a of items) {
+        state.assetById.set(a.id, { id: a.id, displayName: a.displayName, typeName: bucket.typeName, domainId });
+      }
+    } catch (err) {
+      container.innerHTML = `<div class="banner-error"><div><div class="banner-error-title">Load Error</div><div>${escapeHtml(err.message)}</div></div></div>`;
+      return;
+    }
+  }
+
+  container.innerHTML = '';
+  const filtered = filterText
+    ? page.items.filter(a => (a.displayName || '').toLowerCase().includes(filterText))
+    : page.items;
+
+  if (!filtered.length) {
+    container.appendChild(makeEmptyRow(filterText ? 'No matches in loaded assets.' : 'No assets.'));
+  } else {
+    for (const a of filtered) {
+      container.appendChild(buildAssetNode(a, typeKey));
+    }
+  }
+
+  if (!page.done) {
+    container.appendChild(makeLoadMoreRow(page, async (btnRow) => {
+      btnRow.classList.add('loading');
+      btnRow.querySelector('.node-label').textContent = 'Loading…';
+      try {
+        const more = await loadAssetsForDomainType(domainId, bucket.typeId, TYPE_PAGE_LIMIT, page.loaded);
+        page.items.push(...more);
+        page.loaded += more.length;
+        page.done = page.loaded >= page.total || more.length < TYPE_PAGE_LIMIT;
+        for (const a of more) {
+          state.assetById.set(a.id, { id: a.id, displayName: a.displayName, typeName: bucket.typeName, domainId });
+        }
+        renderTypeAssets(domainId, bucket, typeKey, filterText, container);
+      } catch (err) {
+        btnRow.classList.remove('loading');
+        btnRow.querySelector('.node-label').textContent = '⚠ ' + err.message;
+      }
+    }));
+  }
+}
+
+function makeEmptyRow(msg) {
+  const d = document.createElement('div');
+  d.className = 'tree-empty';
+  d.textContent = msg;
+  return d;
+}
+
+function makeLoadMoreRow(page, onClick) {
+  const remaining = Math.max(0, page.total - page.loaded);
+  const row = document.createElement('div');
+  row.className = 'tree-row load-more';
+  row.innerHTML =
+    `<span class="tree-twisty empty"></span>` +
+    `<span class="node-icon" aria-hidden="true">⬇</span>` +
+    `<span class="node-label">Load more (${remaining} remaining)</span>`;
+  row.addEventListener('click', (e) => { e.stopPropagation(); onClick(row); });
+  return row;
+}
+
+function buildAssetNode(asset, parentKey) {
+  const key = nodeKey('ast', asset.id, parentKey);
+  const wrap = document.createElement('div');
+  wrap.className = 'tree-node';
+  const row = document.createElement('div');
+  row.className = 'tree-row' + (state.selectedAssetId === asset.id ? ' selected' : '');
+  row.dataset.key = key;
+  row.dataset.assetId = asset.id;
+  row.innerHTML =
+    `<span class="tree-twisty empty"></span>` +
+    `<span class="node-icon asset" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2 H4 a1 1 0 0 0 -1 1 V13 a1 1 0 0 0 1 1 H12 a1 1 0 0 0 1 -1 V5.5 Z"/><path d="M9.5 2 V5.5 H13"/><path d="M5.5 8.5 H10.5 M5.5 11 H10.5"/></svg></span>` +
+    `<span class="node-label">${escapeHtml(asset.displayName)}</span>`;
+  row.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    selectAsset(asset.id, key);
+  });
+  wrap.appendChild(row);
+  return wrap;
+}
+
+function toggleNode(key, row, render) {
+  const isOpen = state.expanded.has(key);
+  const twisty = row.querySelector('.tree-twisty');
+  let container = row.parentElement.querySelector(':scope > .tree-children');
+
+  if (isOpen) {
+    state.expanded.delete(key);
+    if (twisty) twisty.classList.remove('open');
+    if (container) container.remove();
+  } else {
+    state.expanded.add(key);
+    if (twisty) twisty.classList.add('open');
+    if (!container) {
+      container = document.createElement('div');
+      container.className = 'tree-children';
+      container.dataset.parentKey = key;
+      row.parentElement.appendChild(container);
+    }
+    if (render) render();
+  }
+}
+
+// ============================================================================
+// Asset loading per domain
+// ============================================================================
+async function loadDomainTypeBuckets(domainId) {
+  const counts = new Map();
+  await pagedGql(
+    (limit, offset) => `{
+      assets(limit: ${limit}, offset: ${offset}, where: { domain: { id: { eq: "${domainId}" } } }) {
+        type { id name }
+      }
+    }`,
+    data => {
+      const rows = data.assets || [];
+      for (const a of rows) {
+        const t = a.type || {};
+        const id = t.id || t.name || 'unknown';
+        const name = t.name || 'Asset';
+        const cur = counts.get(id);
+        if (cur) cur.total += 1;
+        else counts.set(id, { typeId: id, typeName: name, total: 1 });
+      }
+      return rows;
+    },
+  );
+  const typeBuckets = Array.from(counts.values()).sort((a, b) => a.typeName.localeCompare(b.typeName));
+  return { typeBuckets, pages: new Map() };
+}
+
+async function loadAssetsForDomainType(domainId, typeId, limit, offset) {
+  const data = await gql(`{
+    assets(
+      limit: ${limit}, offset: ${offset},
+      where: { domain: { id: { eq: "${domainId}" } }, type: { id: { eq: "${typeId}" } } }
+    ) {
+      id displayName type { name }
+    }
+  }`);
+  return (data.assets || []).map(a => ({
+    id: a.id,
+    displayName: a.displayName || '(unnamed)',
+    typeName: (a.type && a.type.name) || 'Asset',
+  }));
+}
+
+// ============================================================================
+// Filter / Search
+// ============================================================================
+function setupTreeFilter() {
+  const input = document.getElementById('treeFilter');
+  input.addEventListener('input', debounce(() => renderTree(), 200));
+}
+
+function setupGlobalSearch() {
+  const input = document.getElementById('globalSearch');
+  const wrap = input.closest('.search-wrap');
+  let popover = null;
+
+  function closePopover() { if (popover) { popover.remove(); popover = null; } }
+  input.addEventListener('blur', () => setTimeout(closePopover, 200));
+
+  input.addEventListener('input', debounce(async () => {
+    const q = input.value.trim();
+    closePopover();
+    if (q.length < 2) return;
+    try {
+      const data = await gql(`{
+        assets(limit: ${SEARCH_RESULT_LIMIT}, where: { displayName: { contains: "${q.replace(/"/g, '\\"')}" } }) {
+          id displayName fullName type { name } domain { id name }
+        }
+      }`);
+      const results = data.assets || [];
+      popover = document.createElement('div');
+      popover.className = 'search-popover';
+      if (!results.length) {
+        popover.innerHTML = '<div class="search-popover-empty">No matches.</div>';
+      } else {
+        for (const r of results) {
+          const item = document.createElement('div');
+          item.className = 'search-result';
+          const meta = [(r.type && r.type.name) || '', r.domain && r.domain.name].filter(Boolean).join(' · ');
+          item.innerHTML =
+            `<span class="search-result-icon" aria-hidden="true">●</span>` +
+            `<div class="search-result-body">` +
+            `<div class="search-result-name">${escapeHtml(r.displayName)}</div>` +
+            (meta ? `<div class="search-result-meta">${escapeHtml(meta)}</div>` : '') +
+            `</div>`;
+          item.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            closePopover();
+            selectAsset(r.id);
+          });
+          popover.appendChild(item);
+        }
+      }
+      wrap.appendChild(popover);
+    } catch (err) {
+      popover = document.createElement('div');
+      popover.className = 'search-popover';
+      popover.innerHTML = `<div class="banner-error" style="margin:8px"><div><div class="banner-error-title">Search Error</div><div>${escapeHtml(err.message)}</div></div></div>`;
+      wrap.appendChild(popover);
+    }
+  }, 350));
+}
+
+// ============================================================================
+// Splitter
+// ============================================================================
+function setupSplitter() {
+  const splitter = document.getElementById('splitter');
+  const left = document.getElementById('leftPane');
+  let savedW = null;
+  try { savedW = localStorage.getItem(LEFT_WIDTH_KEY); } catch {}
+  if (savedW) left.style.width = savedW;
+
+  let dragging = false;
+  splitter.addEventListener('mousedown', (e) => {
+    dragging = true; e.preventDefault();
+    splitter.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const ws = document.getElementById('workspace');
+    const rect = ws.getBoundingClientRect();
+    let w = e.clientX - rect.left;
+    w = Math.max(240, Math.min(rect.width * 0.7, w));
+    left.style.width = w + 'px';
+  });
+  window.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    splitter.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    try { localStorage.setItem(LEFT_WIDTH_KEY, left.style.width); } catch {}
+  });
+
+  splitter.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    const cur = left.getBoundingClientRect().width;
+    const delta = (e.key === 'ArrowLeft' ? -16 : 16);
+    const newW = Math.max(240, cur + delta);
+    left.style.width = newW + 'px';
+    try { localStorage.setItem(LEFT_WIDTH_KEY, left.style.width); } catch {}
+  });
+}
+
+// ============================================================================
+// Asset selection & detail rendering
+// ============================================================================
+async function selectAsset(assetId, treeKey) {
+  state.selectedAssetId = assetId;
+  state.selectedKey = treeKey || null;
+  document.querySelectorAll('.tree-row.selected').forEach(r => r.classList.remove('selected'));
+  if (treeKey) {
+    const row = document.querySelector(`.tree-row[data-key="${CSS.escape(treeKey)}"]`);
+    if (row) row.classList.add('selected');
+  } else {
+    document.querySelectorAll(`.tree-row[data-asset-id="${CSS.escape(assetId)}"]`).forEach(r => r.classList.add('selected'));
+  }
+  window.location.hash = 'asset=' + encodeURIComponent(assetId);
+
+  const empty = document.getElementById('emptyDetail');
+  const content = document.getElementById('detailContent');
+  empty.classList.add('hidden');
+  content.classList.remove('hidden');
+  content.innerHTML = `
+    <div class="asset-header"><div class="skel">
+      <div class="skel-line short"></div>
+      <div class="skel-line med"></div>
+    </div></div>
+    <div class="detail-sections">
+      <div class="section"><div class="skel">
+        <div class="skel-line short"></div>
+        <div class="skel-line"></div>
+        <div class="skel-line med"></div>
+        <div class="skel-line"></div>
+      </div></div>
+      <div class="section"><div class="skel">
+        <div class="skel-line short"></div>
+        <div class="skel-line med"></div>
+      </div></div>
+    </div>`;
+
+  // Scroll to top of detail pane on selection
+  document.getElementById('mainPane').scrollTop = 0;
+
+  try {
+    const detail = await loadAssetDetail(assetId);
+    renderAssetDetail(detail);
+  } catch (err) {
+    content.innerHTML = `<div class="banner-error"><div><div class="banner-error-title">Asset Load Error</div><div>${escapeHtml(err.message)}</div></div></div>`;
+  }
+}
+
+async function loadAssetDetail(assetId) {
+  const coreQ = `{
+    assets(where: { id: { eq: "${assetId}" } }, limit: 1) {
+      id displayName fullName createdOn modifiedOn
+      type { id name }
+      status { name }
+      domain { id name }
+      stringAttributes(limit: ${ATTRS_PER_PAGE}) { type { name } stringValue }
+      booleanAttributes(limit: ${ATTRS_PER_PAGE}) { type { name } booleanValue }
+      numericAttributes(limit: ${ATTRS_PER_PAGE}) { type { name } numericValue }
+      dateAttributes(limit: ${ATTRS_PER_PAGE}) { type { name } dateValue }
+      multiValueAttributes(limit: ${ATTRS_PER_PAGE}) { type { name } stringValues }
+      tags { name }
+    }
+  }`;
+
+  const outRelP = pagedGqlCustom(
+    (limit, offset) => `{
+      assets(where: { id: { eq: "${assetId}" } }, limit: 1) {
+        outgoingRelations(limit: ${limit}, offset: ${offset}) {
+          id type { id role corole source { name } target { name } }
+          target { id displayName type { name } }
+        }
+      }
+    }`,
+    data => ((data.assets || [])[0] || {}).outgoingRelations || [],
+    DETAIL_REL_PAGE,
+  );
+
+  const inRelP = pagedGqlCustom(
+    (limit, offset) => `{
+      assets(where: { id: { eq: "${assetId}" } }, limit: 1) {
+        incomingRelations(limit: ${limit}, offset: ${offset}) {
+          id type { id role corole source { name } target { name } }
+          source { id displayName type { name } }
+        }
+      }
+    }`,
+    data => ((data.assets || [])[0] || {}).incomingRelations || [],
+    DETAIL_REL_PAGE,
+  );
+
+  const respsP = pagedRest(
+    `/rest/2.0/responsibilities?resourceIds=${encodeURIComponent(assetId)}&includeInherited=true`
+  ).catch(() => []);
+
+  const [gqlRes, outgoingRelations, incomingRelations, allResps] = await Promise.all([
+    gql(coreQ), outRelP, inRelP, respsP,
+  ]);
+
+  const asset = (gqlRes.assets || [])[0];
+  if (!asset) throw new Error('Asset not found.');
+  asset.outgoingRelations = outgoingRelations;
+  asset.incomingRelations = incomingRelations;
+
+  if (asset.domain && asset.domain.id) {
+    try {
+      const domainRest = await api(`/rest/2.0/domains/${encodeURIComponent(asset.domain.id)}`);
+      if (domainRest && domainRest.community) {
+        asset.domain.community = { id: domainRest.community.id, name: domainRest.community.name };
+      }
+    } catch {}
+  }
+
+  const userIds = new Set();
+  const groupIds = new Set();
+  for (const r of allResps) {
+    if (!r.owner || !r.owner.id) continue;
+    if (r.owner.resourceType === 'User') userIds.add(r.owner.id);
+    else if (r.owner.resourceType === 'UserGroup') groupIds.add(r.owner.id);
+  }
+  const userMap = new Map();
+  if (userIds.size) {
+    const ids = Array.from(userIds);
+    const CHUNK = 100;
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const params = ids.slice(i, i + CHUNK).map(id => `userId=${encodeURIComponent(id)}`).join('&');
+      try {
+        const users = await pagedRest(`/rest/2.0/users?${params}`);
+        for (const u of users) userMap.set(u.id, u);
+      } catch {}
+    }
+  }
+  const groupMap = new Map();
+  if (groupIds.size) {
+    await Promise.all(Array.from(groupIds).map(async id => {
+      try {
+        const g = await api(`/rest/2.0/userGroups/${encodeURIComponent(id)}`);
+        if (g && g.id) groupMap.set(g.id, g);
+      } catch {}
+    }));
+  }
+
+  return { asset, responsibilities: allResps, userMap, groupMap };
+}
+
+function renderAssetDetail({ asset, responsibilities, userMap, groupMap }) {
+  const content = document.getElementById('detailContent');
+  const community = asset.domain && asset.domain.community;
+  const collibraUrl = `${BASE_URL}/asset/${encodeURIComponent(asset.id)}`;
+
+  // ---- Header card ----
+  let html = '<div class="asset-header">';
+  html += '<div class="asset-breadcrumb">';
+  if (community) html += `<span class="crumb">${escapeHtml(community.name)}</span><span class="sep">▸</span>`;
+  if (asset.domain) html += `<span class="crumb">${escapeHtml(asset.domain.name)}</span>`;
+  html += '</div>';
+  html += '<div class="asset-title-row">';
+  html += `<h1 class="asset-title">${escapeHtml(asset.displayName || asset.fullName || '(unnamed)')}</h1>`;
+  html += `<a class="open-link" href="${escapeAttr(collibraUrl)}" target="_blank" rel="noopener noreferrer">Open in Collibra <span aria-hidden="true">↗</span></a>`;
+  html += '</div>';
+  html += '<div class="asset-meta-row">';
+  if (asset.type && asset.type.name) html += `<span class="chip type">${escapeHtml(asset.type.name)}</span>`;
+  if (asset.status && asset.status.name) html += `<span class="chip status">${escapeHtml(asset.status.name)}</span>`;
+  if (asset.domain && asset.domain.name) html += `<span class="chip domain">📂 ${escapeHtml(asset.domain.name)}</span>`;
+  html += '</div></div>';
+
+  // ---- Sections grid ----
+  html += '<div class="detail-sections">';
+
+  const attrs = collectAttributes(asset);
+  if (attrs.length || asset.createdOn || asset.modifiedOn) {
+    const ATTR_LIMIT = 10;
+    const hasMore = attrs.length > ATTR_LIMIT;
+    html += '<div class="section span-attrs full-width" data-attrs-section>';
+    html += `<h3>Attributes <span class="count">${attrs.length}</span></h3>`;
+    html += '<dl class="attr-grid">';
+    attrs.forEach((a, i) => {
+      const hiddenClass = (hasMore && i >= ATTR_LIMIT) ? ' attr-extra' : '';
+      html += `<dt class="attr-row${hiddenClass}">${escapeHtml(a.name)}</dt>`;
+      html += `<dd class="attr-row${hiddenClass}${a.html ? ' html-content' : ''}">${a.html ? sanitizeRichText(a.value) : escapeHtml(a.value)}</dd>`;
+    });
+    if (asset.createdOn)  html += `<dt>Created</dt><dd>${escapeHtml(formatDate(asset.createdOn))}</dd>`;
+    if (asset.modifiedOn) html += `<dt>Modified</dt><dd>${escapeHtml(formatDate(asset.modifiedOn))}</dd>`;
+    html += `<dt>ID</dt><dd><code>${escapeHtml(asset.id)}</code></dd>`;
+    html += '</dl>';
+    if (hasMore) {
+      const remaining = attrs.length - ATTR_LIMIT;
+      html += `<button type="button" class="attr-toggle" data-attr-toggle aria-expanded="false">Show ${remaining} more <span aria-hidden="true">▾</span></button>`;
+    }
+    html += '</div>';
+  }
+
+  const multis = (asset.multiValueAttributes || []).filter(m => m.stringValues && m.stringValues.length);
+  if (multis.length) {
+    html += '<div class="section span-multi">';
+    html += `<h3>Multi-Value Attributes <span class="count">${multis.length}</span></h3>`;
+    html += '<dl class="attr-grid">';
+    for (const m of multis) {
+      html += `<dt>${escapeHtml((m.type && m.type.name) || '')}</dt>`;
+      html += '<dd>' + m.stringValues.map(v => `<span class="multi-val">${escapeHtml(v)}</span>`).join('') + '</dd>';
+    }
+    html += '</dl></div>';
+  }
+
+  if (asset.tags && asset.tags.length) {
+    html += '<div class="section span-tags">';
+    html += `<h3>Tags <span class="count">${asset.tags.length}</span></h3>`;
+    html += '<div class="tag-list">';
+    for (const t of asset.tags) html += `<span class="tag">#${escapeHtml(t.name)}</span>`;
+    html += '</div></div>';
+  }
+
+  if (responsibilities && responsibilities.length) {
+    html += '<div class="section span-resp">';
+    html += `<h3>Responsibilities <span class="count">${responsibilities.length}</span></h3>`;
+    html += '<div class="resp-list">';
+    for (const r of responsibilities) {
+      let name = '(unknown)';
+      const isInherited = r.baseResource && r.baseResource.id !== asset.id;
+      if (r.owner && r.owner.resourceType === 'User' && userMap.has(r.owner.id)) {
+        const u = userMap.get(r.owner.id);
+        name = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.userName || u.id;
+      } else if (r.owner && r.owner.resourceType === 'UserGroup') {
+        const g = groupMap && groupMap.get(r.owner.id);
+        const gname = g && (g.name || g.groupName);
+        name = gname ? `Group: ${gname}` : (r.owner.id ? `Group: ${r.owner.id}` : 'Group');
+      } else if (r.owner && r.owner.id) {
+        name = r.owner.id;
+      }
+      const role = (r.role && r.role.name) || '';
+      html += `<div class="resp-item">
+        <div class="resp-avatar">${escapeHtml(initials(name))}</div>
+        <div class="resp-info">
+          <div class="resp-name">${escapeHtml(name)}</div>
+          <div class="resp-role">${escapeHtml(role)}</div>
+        </div>
+        ${isInherited ? '<span class="resp-inherited-tag">Inherited</span>' : ''}
+      </div>`;
+    }
+    html += '</div></div>';
+  }
+
+  // Outgoing Relations section hidden (diagram shown below)
+  // const outGroups = groupRelations(asset.outgoingRelations || [], 'target');
+  // if (outGroups.size) { ... }
+
+  // Incoming Relations section hidden (diagram shown below)
+  // const inGroups = groupRelations(asset.incomingRelations || [], 'source');
+  // if (inGroups.size) { ... }
+
+  html += buildRelationDiagramSection(asset);
+
+  html += '</div>'; // close detail-sections
+
+  content.innerHTML = html;
+
+  content.querySelectorAll('.relation-item[data-asset-id]').forEach(el => {
+    el.addEventListener('click', () => selectAsset(el.dataset.assetId));
+  });
+  content.querySelectorAll('button.diagram-node[data-asset-id]').forEach(el => {
+    el.addEventListener('click', () => selectAsset(el.dataset.assetId));
+  });
+  content.querySelectorAll('[data-attr-toggle]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const section = btn.closest('[data-attrs-section]');
+      if (!section) return;
+      const expanded = section.classList.toggle('expanded');
+      btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      const extra = section.querySelectorAll('.attr-extra').length / 2; // dt/dd pairs
+      btn.innerHTML = expanded
+        ? 'Show less <span aria-hidden="true">▴</span>'
+        : `Show ${extra} more <span aria-hidden="true">▾</span>`;
+    });
+  });
+  setupRelationDiagramControls(content);
+}
+
+function collectAttributes(asset) {
+  const out = [];
+  const isHidden = name => /^category$/i.test((name || '').trim());
+  for (const sa of (asset.stringAttributes || [])) {
+    if (sa.stringValue == null || sa.stringValue === '') continue;
+    const name = (sa.type && sa.type.name) || 'String';
+    if (isHidden(name)) continue;
+    out.push({
+      name,
+      value: sa.stringValue,
+      html: looksLikeHtml(sa.stringValue),
+    });
+  }
+  for (const na of (asset.numericAttributes || [])) {
+    if (na.numericValue == null) continue;
+    const name = (na.type && na.type.name) || 'Number';
+    if (isHidden(name)) continue;
+    out.push({ name, value: String(na.numericValue), html: false });
+  }
+  for (const ba of (asset.booleanAttributes || [])) {
+    if (ba.booleanValue == null) continue;
+    const name = (ba.type && ba.type.name) || 'Boolean';
+    if (isHidden(name)) continue;
+    out.push({ name, value: ba.booleanValue ? 'Yes' : 'No', html: false });
+  }
+  for (const da of (asset.dateAttributes || [])) {
+    if (da.dateValue == null) continue;
+    const name = (da.type && da.type.name) || 'Date';
+    if (isHidden(name)) continue;
+    out.push({ name, value: formatDate(da.dateValue), html: false });
+  }
+  out.sort((a, b) => {
+    const aDesc = /description/i.test(a.name) ? 0 : 1;
+    const bDesc = /description/i.test(b.name) ? 0 : 1;
+    if (aDesc !== bDesc) return aDesc - bDesc;
+    return a.name.localeCompare(b.name);
+  });
+  return out;
+}
+
+function groupRelations(relations, otherKey) {
+  const groups = new Map();
+  for (const r of relations) {
+    const role = (r.type && r.type.role) || 'related to';
+    const other = r[otherKey];
+    if (!other) continue;
+    const otherType = (other.type && other.type.name) || 'Asset';
+    const labelKey = role + '||' + otherType;
+    if (!groups.has(labelKey)) {
+      groups.set(labelKey, {
+        label: { role, sourceType: otherType, targetType: otherType },
+        items: [],
+      });
+    }
+    groups.get(labelKey).items.push({ other });
+  }
+  const ordered = new Map();
+  const keys = Array.from(groups.keys()).sort();
+  for (const k of keys) {
+    const g = groups.get(k);
+    ordered.set(g.label, g.items);
+  }
+  return ordered;
+}
+
+function buildRelationDiagramSection(asset) {
+  const incoming = asset.incomingRelations || [];
+  const outgoing = asset.outgoingRelations || [];
+  const total = incoming.length + outgoing.length;
+  if (!total) return '';
+
+  const currentNode = {
+    id: asset.id,
+    displayName: asset.displayName || asset.fullName || '(unnamed)',
+    type: asset.type || {},
+  };
+  const incomingRows = incoming.filter(relation => relation.source);
+  const outgoingRows = outgoing.filter(relation => relation.target);
+  if (!incomingRows.length && !outgoingRows.length) return '';
+
+  let html = '<div class="section span-diagram full-width relation-diagram-section" id="relationDiagramSection">';
+  html += `<h3>Relation Diagram <span class="count">${total}</span></h3>`;
+  html += '<div class="relation-diagram-toolbar">';
+  html += '<div class="diagram-key" aria-hidden="true"><span class="diagram-key-item incoming">Incoming</span><span class="diagram-key-item outgoing">Outgoing</span></div>';
+  html += '<div class="diagram-toggles" aria-label="Relation diagram labels">';
+  html += '<label class="diagram-toggle"><input type="checkbox" data-diagram-toggle="role"> Role</label>';
+  html += '<label class="diagram-toggle"><input type="checkbox" data-diagram-toggle="corole"> CoRole</label>';
+  html += '</div></div>';
+  html += `<div class="relation-diagram" role="group" aria-label="Relation diagram for ${escapeAttr(currentNode.displayName)}">`;
+
+  // SVG arrow overlay (filled in by layoutRelationDiagram)
+  html += '<svg class="diagram-svg-overlay" aria-hidden="true">';
+  html += '<defs>';
+  html += '<marker id="diagramArrowIncoming" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">';
+  html += '<path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>';
+  html += '</marker>';
+  html += '<marker id="diagramArrowOutgoing" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">';
+  html += '<path d="M0,0 L10,5 L0,10 z" fill="var(--gold)"/>';
+  html += '</marker>';
+  html += '</defs>';
+  html += '<g class="diagram-paths"></g>';
+  html += '</svg>';
+
+  // Incoming column (grouped, with per-group show-more)
+  const incomingFlat = [];
+  const incomingGroups = buildDiagramGroups(incomingRows, 'source', incomingFlat);
+  html += `<div class="diagram-column incoming"><div class="diagram-column-title">Incoming ${incomingRows.length ? `<span class="count">${incomingRows.length}</span>` : ''}</div>`;
+  if (incomingGroups.length) {
+    for (const g of incomingGroups) {
+      html += renderDiagramGroup(g, 'incoming');
+    }
+  } else {
+    html += '<div class="diagram-empty">No incoming relations</div>';
+  }
+  html += '</div>';
+
+  // Center
+  html += '<div class="diagram-center">';
+  html += '<div class="diagram-center-label">Current Asset</div>';
+  html += buildDiagramNode(currentNode, true);
+  html += '</div>';
+
+  // Outgoing column (grouped, with per-group show-more)
+  const outgoingFlat = [];
+  const outgoingGroups = buildDiagramGroups(outgoingRows, 'target', outgoingFlat);
+  html += `<div class="diagram-column outgoing"><div class="diagram-column-title">Outgoing ${outgoingRows.length ? `<span class="count">${outgoingRows.length}</span>` : ''}</div>`;
+  if (outgoingGroups.length) {
+    for (const g of outgoingGroups) {
+      html += renderDiagramGroup(g, 'outgoing');
+    }
+  } else {
+    html += '<div class="diagram-empty">No outgoing relations</div>';
+  }
+  html += '</div>';
+
+  // Edge labels layer (positioned absolutely over arrows)
+  html += '<div class="diagram-edge-labels" aria-hidden="true">';
+  incomingFlat.forEach((relation, i) => {
+    const role = getRelationRoleText(relation, 'role');
+    const corole = getRelationRoleText(relation, 'corole');
+    if (role) html += `<span class="diagram-edge-label role" data-edge-id="in-${i}" title="${escapeAttr(role)}">Role: ${escapeHtml(role)}</span>`;
+    if (corole) html += `<span class="diagram-edge-label corole" data-edge-id="in-${i}" title="${escapeAttr(corole)}">CoRole: ${escapeHtml(corole)}</span>`;
+  });
+  outgoingFlat.forEach((relation, i) => {
+    const role = getRelationRoleText(relation, 'role');
+    const corole = getRelationRoleText(relation, 'corole');
+    if (role) html += `<span class="diagram-edge-label role" data-edge-id="out-${i}" title="${escapeAttr(role)}">Role: ${escapeHtml(role)}</span>`;
+    if (corole) html += `<span class="diagram-edge-label corole" data-edge-id="out-${i}" title="${escapeAttr(corole)}">CoRole: ${escapeHtml(corole)}</span>`;
+  });
+  html += '</div>';
+
+  html += '</div></div>';
+  return html;
+}
+
+const DIAGRAM_GROUP_PREVIEW = 5;
+
+// Group relations for the diagram while preserving the flat iteration order so
+// edge IDs (in-${i} / out-${i}) line up with the existing arrow + label layout.
+function buildDiagramGroups(relations, otherKey, flatOut) {
+  const groups = new Map();
+  relations.forEach((relation, flatIndex) => {
+    flatOut.push(relation);
+    const other = relation[otherKey];
+    if (!other) return;
+    const role = (relation.type && relation.type.role) || 'related to';
+    const otherType = (other.type && other.type.name) || 'Asset';
+    const key = role + '||' + otherType;
+    if (!groups.has(key)) {
+      groups.set(key, { role, otherType, items: [] });
+    }
+    groups.get(key).items.push({ other, flatIndex });
+  });
+  // Sort: largest groups first, then alphabetic by role for stability.
+  return Array.from(groups.values()).sort((a, b) =>
+    b.items.length - a.items.length || a.role.localeCompare(b.role)
+  );
+}
+
+function renderDiagramGroup(group, direction) {
+  const arrow = direction === 'incoming' ? '→' : '→';
+  const headerInner = direction === 'incoming'
+    ? `<span class="other-type">${escapeHtml(group.otherType)}</span> <span class="arrow">${arrow}</span> <span class="role">${escapeHtml(group.role)}</span>`
+    : `<span class="role">${escapeHtml(group.role)}</span> <span class="arrow">${arrow}</span> <span class="other-type">${escapeHtml(group.otherType)}</span>`;
+  const showMore = group.items.length > DIAGRAM_GROUP_PREVIEW;
+  let h = `<div class="diagram-group"${showMore ? ' data-preview="' + DIAGRAM_GROUP_PREVIEW + '"' : ''}>`;
+  h += `<button type="button" class="diagram-group-header" aria-expanded="true">`;
+  h += `<span class="chev" aria-hidden="true">▾</span>${headerInner}<span class="count">${group.items.length}</span>`;
+  h += `</button>`;
+  h += `<div class="diagram-group-nodes">`;
+  group.items.forEach((item, idx) => {
+    const edgeId = `${direction === 'incoming' ? 'in' : 'out'}-${item.flatIndex}`;
+    const hidden = showMore && idx >= DIAGRAM_GROUP_PREVIEW;
+    h += buildDiagramEdgeNode(item.other, direction, edgeId, hidden);
+  });
+  if (showMore) {
+    const remaining = group.items.length - DIAGRAM_GROUP_PREVIEW;
+    h += `<button type="button" class="diagram-group-more" data-show-more>Show ${remaining} more</button>`;
+  }
+  h += `</div></div>`;
+  return h;
+}
+
+function buildDiagramEdgeNode(node, direction, edgeId, hidden) {
+  const name = node.displayName || node.fullName || '(unnamed)';
+  const typeName = (node.type && node.type.name) || 'Asset';
+  const inner = `<span class="diagram-node-name">${escapeHtml(name)}</span><span class="diagram-node-type">${escapeHtml(typeName)}</span>`;
+  const dataAttrs = `data-direction="${direction}" data-edge-id="${edgeId}"${hidden ? ' hidden' : ''}`;
+  if (!node.id) {
+    return `<div class="diagram-node diagram-edge-node" ${dataAttrs} title="${escapeAttr(name)}">${inner}</div>`;
+  }
+  return `<button type="button" class="diagram-node diagram-edge-node" ${dataAttrs} data-asset-id="${escapeAttr(node.id)}" title="${escapeAttr(name)}">${inner}</button>`;
+}
+
+function buildDiagramNode(node, isCurrent) {
+  const name = node.displayName || node.fullName || '(unnamed)';
+  const typeName = (node.type && node.type.name) || 'Asset';
+  const inner = `<span class="diagram-node-name">${escapeHtml(name)}</span><span class="diagram-node-type">${escapeHtml(typeName)}${isCurrent ? ' · Selected' : ''}</span>`;
+  if (isCurrent || !node.id) {
+    return `<div class="diagram-node${isCurrent ? ' current' : ''}" title="${escapeAttr(name)}">${inner}</div>`;
+  }
+  return `<button type="button" class="diagram-node" data-asset-id="${escapeAttr(node.id)}" title="${escapeAttr(name)}">${inner}</button>`;
+}
+
+function getRelationRoleText(relation, field) {
+  const type = relation.type || {};
+  if (field === 'corole') return type.corole || type.coRole || '';
+  return type.role || '';
+}
+
+function setupRelationDiagramControls(content) {
+  const section = content.querySelector('#relationDiagramSection');
+  if (!section) return;
+  section.querySelectorAll('[data-diagram-toggle]').forEach(input => {
+    input.checked = false;
+    input.addEventListener('change', () => {
+      section.classList.toggle(`show-${input.dataset.diagramToggle}`, input.checked);
+      const d = section.querySelector('.relation-diagram');
+      if (d) layoutRelationDiagram(d);
+    });
+  });
+
+  const diagram = section.querySelector('.relation-diagram');
+  if (!diagram) return;
+
+  const layout = () => layoutRelationDiagram(diagram);
+
+  // Group collapse + show-more controls
+  diagram.addEventListener('click', (e) => {
+    const moreBtn = e.target.closest('.diagram-group-more');
+    if (moreBtn) {
+      const group = moreBtn.closest('.diagram-group');
+      if (group) {
+        group.querySelectorAll('.diagram-edge-node[hidden]').forEach(n => n.removeAttribute('hidden'));
+        moreBtn.remove();
+        requestAnimationFrame(layout);
+      }
+      return;
+    }
+    const header = e.target.closest('.diagram-group-header');
+    if (header) {
+      const group = header.closest('.diagram-group');
+      if (group) {
+        const collapsed = group.classList.toggle('collapsed');
+        header.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        requestAnimationFrame(layout);
+      }
+    }
+  });
+
+  // Initial layout (after fonts/layout settle)
+  requestAnimationFrame(layout);
+  setTimeout(layout, 60);
+
+  if (typeof ResizeObserver !== 'undefined') {
+    const ro = new ResizeObserver(() => layout());
+    ro.observe(diagram);
+    diagram.querySelectorAll('.diagram-node').forEach(n => ro.observe(n));
+  }
+  diagram.addEventListener('scroll', layout, { passive: true });
+  window.addEventListener('resize', layout);
+}
+
+function layoutRelationDiagram(diagram) {
+  const svg = diagram.querySelector('.diagram-svg-overlay');
+  const pathsGroup = svg && svg.querySelector('.diagram-paths');
+  const labelsLayer = diagram.querySelector('.diagram-edge-labels');
+  const current = diagram.querySelector('.diagram-node.current');
+  if (!svg || !pathsGroup || !labelsLayer || !current) return;
+
+  const w = diagram.scrollWidth;
+  const h = diagram.scrollHeight;
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  if (labelsLayer) {
+    labelsLayer.style.width = w + 'px';
+    labelsLayer.style.height = h + 'px';
+  }
+
+  const containerRect = diagram.getBoundingClientRect();
+  const offsetX = -containerRect.left + diagram.scrollLeft;
+  const offsetY = -containerRect.top + diagram.scrollTop;
+  const rectFor = el => {
+    const r = el.getBoundingClientRect();
+    return {
+      left: r.left + offsetX,
+      right: r.right + offsetX,
+      top: r.top + offsetY,
+      bottom: r.bottom + offsetY,
+      width: r.width,
+      height: r.height,
+      cy: r.top + offsetY + r.height / 2,
+    };
+  };
+
+  const cur = rectFor(current);
+  const currentLeft = { x: cur.left, y: cur.cy };
+  const currentRight = { x: cur.right, y: cur.cy };
+
+  // Clear previous paths
+  while (pathsGroup.firstChild) pathsGroup.removeChild(pathsGroup.firstChild);
+
+  const visibleEdgeIds = new Set();
+  diagram.querySelectorAll('.diagram-edge-node').forEach(node => {
+    // Skip nodes inside a collapsed group or hidden by [hidden] attr.
+    if (node.offsetParent === null || node.hidden) return;
+    visibleEdgeIds.add(node.dataset.edgeId);
+    const dir = node.dataset.direction;
+    const r = rectFor(node);
+    let p1, p2, dirClass, markerId;
+    if (dir === 'incoming') {
+      // Arrow from other.right -> current.left
+      p1 = { x: r.right, y: r.cy };
+      p2 = currentLeft;
+      dirClass = 'incoming';
+      markerId = 'diagramArrowIncoming';
+    } else {
+      // Arrow from current.right -> other.left
+      p1 = currentRight;
+      p2 = { x: r.left, y: r.cy };
+      dirClass = 'outgoing';
+      markerId = 'diagramArrowOutgoing';
+    }
+
+    const dx = Math.max(40, Math.abs(p2.x - p1.x) * 0.55);
+    const c1 = { x: p1.x + dx, y: p1.y };
+    const c2 = { x: p2.x - dx, y: p2.y };
+    const d = `M ${p1.x} ${p1.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${p2.x} ${p2.y}`;
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', d);
+    path.setAttribute('class', `diagram-arrow ${dirClass}`);
+    path.setAttribute('marker-end', `url(#${markerId})`);
+    pathsGroup.appendChild(path);
+
+    // Position labels at curve midpoint (cubic bezier midpoint at t=0.5)
+    const mx = (p1.x + 3 * c1.x + 3 * c2.x + p2.x) / 8;
+    const my = (p1.y + 3 * c1.y + 3 * c2.y + p2.y) / 8;
+    const edgeId = node.dataset.edgeId;
+    const labels = labelsLayer.querySelectorAll(`[data-edge-id="${edgeId}"]`);
+    const visible = Array.from(labels).filter(l => getComputedStyle(l).display !== 'none');
+    const heights = visible.map(l => l.offsetHeight || 16);
+    const totalH = heights.reduce((s, h) => s + h, 0) + Math.max(0, visible.length - 1) * 2;
+    let cy = my - totalH / 2;
+    visible.forEach((label, i) => {
+      label.style.left = mx + 'px';
+      label.style.top = (cy + heights[i] / 2) + 'px';
+      cy += heights[i] + 2;
+    });
+    // Hidden labels still need positioning so they're correct when shown
+    Array.from(labels).filter(l => !visible.includes(l)).forEach(label => {
+      label.style.left = mx + 'px';
+      label.style.top = my + 'px';
+    });
+  });
+
+  // Hide labels whose edge node is currently not visible (collapsed / show-more).
+  labelsLayer.querySelectorAll('.diagram-edge-label').forEach(label => {
+    const id = label.getAttribute('data-edge-id');
+    label.style.visibility = visibleEdgeIds.has(id) ? '' : 'hidden';
+  });
+}
+
+// ============================================================================
+// Customize Panel (Theme + Fonts)
+// ============================================================================
+function buildCustomizePanel() {
+  const prefs = getEffectivePrefs();
+  const body = document.getElementById('panelBody');
+
+  // Theme swatches HTML
+  let themeHtml = '';
+  for (const branch of BRANCHES) {
+    const bt = THEMES.filter(t => t.branch === branch);
+    if (!bt.length) continue;
+    themeHtml += `<div class="branch-label">${esc(branch)}</div><div class="theme-grid">`;
+    for (const t of bt) {
+      const ac = t.vars['--accent'] || '#666';
+      const isActive = t.id === prefs.themeId;
+      themeHtml += `<button type="button" class="theme-swatch${isActive ? ' active' : ''}" data-theme-id="${esc(t.id)}" data-mode="${esc(t.mode)}" role="radio" aria-checked="${isActive ? 'true' : 'false'}" aria-label="${esc(t.label)} (${esc(t.mode)} mode)" style="background:${esc(t.heroGrad)};${isActive ? `border-color:${ac};` : ''}"><span class="swatch-mode-tag" aria-hidden="true">${t.mode}</span><span class="swatch-label" aria-hidden="true">${esc(t.label)}</span></button>`;
+    }
+    themeHtml += '</div>';
+  }
+
+  // Font selectors HTML
+  const fontBodyOptions = FONT_BODY_OPTIONS.map(f =>
+    `<option value="${esc(f.id)}"${f.id === prefs.fontBody ? ' selected' : ''}>${esc(f.label)}</option>`
+  ).join('');
+  const fontDisplayOptions = FONT_DISPLAY_OPTIONS.map(f =>
+    `<option value="${esc(f.id)}"${f.id === prefs.fontDisplay ? ' selected' : ''}>${esc(f.label)}</option>`
+  ).join('');
+
+  body.innerHTML = `
+    <div class="panel-section">
+      <div class="panel-label" id="themeBranchLabel">Theme · Branch &amp; Mode</div>
+      <div id="themePanelSwatches" role="radiogroup" aria-labelledby="themeBranchLabel">${themeHtml}</div>
+    </div>
+    <div class="panel-section">
+      <div class="panel-label">Typography</div>
+      <label for="cfgFontBody" class="panel-label" style="font-size:9px;margin-bottom:4px">Body Font</label>
+      <select id="cfgFontBody" class="panel-select">${fontBodyOptions}</select>
+      <div class="panel-hint">Body text, descriptions, search inputs.</div>
+      <label for="cfgFontDisplay" class="panel-label" style="font-size:9px;margin-bottom:4px;margin-top:8px">Display Font</label>
+      <select id="cfgFontDisplay" class="panel-select">${fontDisplayOptions}</select>
+      <div class="panel-hint">Titles, labels, badges, buttons.</div>
+      <div class="scale-row" style="margin-top:14px">
+        <label for="cfgFontScale" class="panel-label" style="margin-bottom:0">Size Scale</label>
+        <span class="scale-value" aria-hidden="true">×<span id="cfgFontScaleLabel">${(parseFloat(prefs.fontScale) || 1).toFixed(2)}</span></span>
+      </div>
+      <input id="cfgFontScale" type="range" min="0.85" max="1.5" step="0.05" value="${parseFloat(prefs.fontScale) || 1}" class="scale-slider">
+      <div class="scale-marks"><span>Compact</span><span>Default</span><span>Large</span></div>
+    </div>
+    <div class="panel-section">
+      <button class="btn-panel-reset" id="resetPrefs"><span aria-hidden="true">↩</span> Reset to Defaults</button>
+    </div>
+  `;
+}
+
+function setupCustomizePanel() {
+  const panel = document.getElementById('customizePanel');
+  const backdrop = document.getElementById('panelBackdrop');
+  const openBtn = document.getElementById('customizeBtn');
+  const closeBtn = document.getElementById('panelClose');
+  let lastFocus = null;
+
+  function openPanel() {
+    lastFocus = document.activeElement;
+    panel.hidden = false; backdrop.hidden = false;
+    requestAnimationFrame(() => panel.classList.add('open'));
+    openBtn.setAttribute('aria-expanded', 'true');
+    setTimeout(() => closeBtn.focus(), 50);
+  }
+  function closePanel() {
+    panel.classList.remove('open');
+    backdrop.hidden = true;
+    openBtn.setAttribute('aria-expanded', 'false');
+    panel.addEventListener('transitionend', () => panel.hidden = true, { once: true });
+    if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+  }
+
+  openBtn.addEventListener('click', openPanel);
+  closeBtn.addEventListener('click', closePanel);
+  backdrop.addEventListener('click', closePanel);
+  panel.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); closePanel(); return; }
+    if (e.key === 'Tab') {
+      const focusables = panel.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])');
+      if (!focusables.length) return;
+      const first = focusables[0], last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  });
+
+  // Theme swatch click & keyboard
+  const swatchHost = document.getElementById('themePanelSwatches');
+  function selectTheme(sw) {
+    if (!sw) return;
+    const tid = sw.dataset.themeId;
+    const prefs = getUserPrefs(); prefs.themeId = tid; saveUserPrefs(prefs);
+    applyTheme(tid);
+    document.querySelectorAll('.theme-swatch').forEach(s => {
+      const isA = s.dataset.themeId === tid;
+      s.classList.toggle('active', isA);
+      s.setAttribute('aria-checked', isA ? 'true' : 'false');
+      s.style.borderColor = isA ? (getTheme(tid).vars['--accent'] || '') : '';
+    });
+    // Refresh shield SVG to new accent
+    const t = getTheme(tid);
+    document.getElementById('brandShield').innerHTML = shieldSVG(32, t.vars['--accent'] || '#1B6FBA', 'rgba(0,0,0,.18)', t.vars['--gold'] || '#C8A84B');
+  }
+  swatchHost.addEventListener('click', (e) => {
+    const sw = e.target.closest('[data-theme-id]'); if (!sw) return;
+    selectTheme(sw);
+  });
+  swatchHost.addEventListener('keydown', (e) => {
+    const swatches = [...document.querySelectorAll('.theme-swatch')];
+    const idx = swatches.indexOf(document.activeElement);
+    if (idx < 0) return;
+    let next = -1;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (idx + 1) % swatches.length;
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (idx - 1 + swatches.length) % swatches.length;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End')  next = swatches.length - 1;
+    else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); selectTheme(swatches[idx]); return; }
+    if (next >= 0) { e.preventDefault(); swatches[next].focus(); selectTheme(swatches[next]); }
+  });
+
+  // Fonts
+  document.getElementById('cfgFontBody').addEventListener('change', (e) => {
+    const prefs = getUserPrefs(); prefs.fontBody = e.target.value; saveUserPrefs(prefs);
+    applyFontConfig(getEffectivePrefs());
+  });
+  document.getElementById('cfgFontDisplay').addEventListener('change', (e) => {
+    const prefs = getUserPrefs(); prefs.fontDisplay = e.target.value; saveUserPrefs(prefs);
+    applyFontConfig(getEffectivePrefs());
+  });
+  const scaleEl = document.getElementById('cfgFontScale');
+  const scaleLabel = document.getElementById('cfgFontScaleLabel');
+  scaleEl.addEventListener('input', (e) => {
+    const v = parseFloat(e.target.value) || 1;
+    scaleLabel.textContent = v.toFixed(2);
+    const prefs = getUserPrefs(); prefs.fontScale = v; saveUserPrefs(prefs);
+    applyFontConfig(getEffectivePrefs());
+  });
+
+  // Reset
+  document.getElementById('resetPrefs').addEventListener('click', () => {
+    try { localStorage.removeItem(USER_PREFS_KEY); } catch {}
+    location.reload();
+  });
+}
+
+// ============================================================================
+// Run
+// ============================================================================
+window.addEventListener('hashchange', () => {
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const id = hash.get('asset');
+  if (id && id !== state.selectedAssetId) selectAsset(id);
+});
+
+bootstrap();
+</script>
+</body>
+</html>
