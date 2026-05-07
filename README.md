@@ -57,7 +57,7 @@ zip backup.zip dgc/images/assetNavigator.html
 Upload the modified backup through the Collibra DGC console (Settings → Backup/Restore → Restore) and apply it. The file will be available at:
 
 ```
-https://<your-collibra-host>/dgc/images/assetNavigator.html
+https://<your-collibra-host>/resources/images/assetNavigator.html
 ```
 
 ---
